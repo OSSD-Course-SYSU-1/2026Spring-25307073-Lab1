@@ -1,0 +1,26 @@
+{
+  "modulePathMap": {
+    "entry": "D:\\CanvasComponent-master\\CanvasComponent-master\\entry"
+  },
+  "compileMode": "esmodule",
+  "projectRootPath": "D:\\CanvasComponent-master\\CanvasComponent-master",
+  "nodeModulesPath": "D:\\CanvasComponent-master\\CanvasComponent-master\\entry\\build\\default\\intermediates\\loader_out\\default\\node_modules",
+  "byteCodeHarInfo": {},
+  "declarationEntry": [],
+  "moduleName": "entry",
+  "hspNameOhmMap": {},
+  "harNameOhmMap": {},
+  "packageManagerType": "ohpm",
+  "compileEntry": [],
+  "otherCompileFiles": [],
+  "dynamicImportLibInfo": {},
+  "routerMap": [],
+  "hspResourcesMap": {},
+  "updateVersionInfo": {},
+  "customizedHar": false,
+  "anBuildOutPut": "D:\\CanvasComponent-master\\CanvasComponent-master\\entry\\build\\default\\intermediates\\loader_out\\default\\an\\arm64-v8a",
+  "anBuildMode": "type",
+  "patchConfig": {
+    "changedFileList": "D:\\CanvasComponent-master\\CanvasComponent-master\\entry\\build\\default\\intermediates\\patch\\default\\changedFileList.json"
+  }
+}

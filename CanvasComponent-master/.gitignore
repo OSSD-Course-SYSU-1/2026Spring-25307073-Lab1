@@ -1,0 +1,16 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.hvigor/
+build/
+
+# Build
+*.hsp
+*.hbc
+*.hap
+
+# Node
+node_modules/

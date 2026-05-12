@@ -1,0 +1,12 @@
+# IDE
+.idea/
+.hvigor/
+
+# Build
+build/
+*.hsp
+*.hbc
+*.hap
+
+# Node
+node_modules/

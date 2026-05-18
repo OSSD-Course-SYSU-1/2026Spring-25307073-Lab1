@@ -1,168 +1,141 @@
-/*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { window } from '@kit.ArkUI';
 import Logger from '../common/utils/Logger';
-import DrawModel from '../viewmodel/DrawModel';
-import PrizeDialog from '../view/PrizeDialog';
-import PrizeData from '../viewmodel/PrizeData';
+import WheelView from '../view/WheelView';
+import ScratchCardView from '../view/ScratchCardView';
+import HistoryView from '../view/HistoryView';
+import StarParticle from '../view/StarParticle';
 import StyleConstants from '../common/constants/StyleConstants';
-import CommonConstants from '../common/constants/CommonConstants';
+import ColorConstants from '../common/constants/ColorConstants';
 import { Context } from '@kit.AbilityKit';
 import { BusinessError, commonEventManager } from '@kit.BasicServicesKit';
 import { i18n } from '@kit.LocalizationKit';
 
-// Get context.
 const uiContext: UIContext | undefined = AppStorage.get('uiContext');
 let context: Context = uiContext!.getHostContext()!;
 
 @Entry
 @Component
 struct CanvasPage {
-  private settings: RenderingContextSettings = new RenderingContextSettings(true);
-  private canvasContext: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
-  @State drawModel: DrawModel = new DrawModel();
-  @State screenWidth: number = 0;
-  @State screenHeight: number = 0;
-  @State rotateDegree: number = 0;
-  @State enableFlag: boolean = true;
-  @State prizeData: PrizeData = new PrizeData();
-  dialogController: CustomDialogController = new CustomDialogController({
-    builder: PrizeDialog({
-      prizeData: $prizeData,
-      enableFlag: $enableFlag
-    }),
-    autoCancel: false,
-    alignment: DialogAlignment.Center,
-    cancel: () => {
-      this.enableFlag = !this.enableFlag;
-    }
-  });
-  private currentLang: string = 'zh-Hans';
-  private lastLang: string = 'zh-Hans';
-  private subscriber: commonEventManager.CommonEventSubscriber | null = null;
+  @State currentIndex: number = 0;
+  @State checkedIn: boolean = false;
+  @State checkInDays: number = 0;
 
-  aboutToAppear() {
-    // Obtains the width and height of the screen, excluding the height of the navigation view.
+  aboutToAppear(): void {
     window.getLastWindow(context)
-      .then((windowClass: window.Window) => {
-        windowClass.setWindowLayoutFullScreen(true);
-        let windowProperties = windowClass.getWindowProperties();
-        this.screenWidth = this.getUIContext().px2vp(windowProperties.windowRect.width);
-        this.screenHeight = this.getUIContext().px2vp(windowProperties.windowRect.height);
-      })
-      .catch((error: Error) => {
-        Logger.error('Failed to obtain the window size. Cause: ' + JSON.stringify(error));
-      })
+      .then((wc) => { wc.setWindowLayoutFullScreen(true); })
+      .catch((e: Error) => { Logger.error('Fullscreen error: ' + JSON.stringify(e)); });
 
-    let subscribeInfo: commonEventManager.CommonEventSubscribeInfo = {
-      events: [commonEventManager.Support.COMMON_EVENT_LOCALE_CHANGED]
-    };
-    commonEventManager.createSubscriber(subscribeInfo)
-      .then((commonEventSubscriber: commonEventManager.CommonEventSubscriber) => {
-        this.subscriber = commonEventSubscriber;
-        commonEventManager.subscribe(this.subscriber, (err) => {
-          if (err) {
-            Logger.error(`Failed to subscribe common event. errorCode=${err.code}, errorMessage=${err.message}`);
-            return;
-          }
-          this.currentLang = i18n.System.getSystemLanguage();
-        });
-      })
-      .catch((err: BusinessError) => {
-        Logger.error(`CreateSubscriber failed, errorCode=${err.code}, errorMessage=${err.message}}`);
-      })
+    this.checkDaily();
   }
 
-  onPageShow(): void {
-    if (this.lastLang != this.currentLang) {
-      this.drawModel.draw(this.canvasContext, this.screenWidth, this.screenHeight);
+  checkDaily(): void {
+    const today = new Date().toDateString();
+    const lastCheckIn = AppStorage.get<string>('last_checkin') || '';
+    const streak = AppStorage.get<number>('checkin_streak') || 0;
+
+    if (lastCheckIn === today) {
+      this.checkedIn = true;
+      this.checkInDays = streak;
+    } else {
+      this.checkedIn = false;
+      this.checkInDays = streak;
     }
   }
 
-  onPageHide(): void {
-    this.lastLang = i18n.System.getSystemLanguage();
-  }
+  doCheckIn(): void {
+    const today = new Date().toDateString();
+    const lastCheckIn = AppStorage.get<string>('last_checkin') || '';
+    let streak = AppStorage.get<number>('checkin_streak') || 0;
 
-  aboutToDisappear(): void {
-    if (this.subscriber) {
-      commonEventManager.unsubscribe(this.subscriber, (err: BusinessError) => {
-        if (!err) {
-          this.subscriber = null;
-        }
-      })
+    // Check if consecutive day
+    const yesterday = new Date(Date.now() - 86400000).toDateString();
+    if (lastCheckIn === yesterday) {
+      streak++;
+    } else if (lastCheckIn !== today) {
+      streak = 1;
     }
+
+    AppStorage.set('last_checkin', today);
+    AppStorage.set('checkin_streak', streak);
+    this.checkedIn = true;
+    this.checkInDays = streak;
   }
 
   build() {
-    Stack({ alignContent: Alignment.Center }) {
-      Canvas(this.canvasContext)
+    Stack() {
+      // Gradient background
+      Column()
         .width(StyleConstants.FULL_PERCENT)
         .height(StyleConstants.FULL_PERCENT)
-        .onReady(() => {
-          this.drawModel.draw(this.canvasContext, this.screenWidth, this.screenHeight);
-        })
-        .rotate({
-          x: 0,
-          y: 0,
-          z: 1,
-          angle: this.rotateDegree,
-          centerX: this.screenWidth / CommonConstants.TWO,
-          centerY: this.screenHeight / CommonConstants.TWO
+        .linearGradient({
+          direction: GradientDirection.Bottom,
+          colors: [
+            [ColorConstants.BG_COLOR_TOP, 0],
+            [ColorConstants.BG_COLOR_MID, 0.5],
+            [ColorConstants.BG_COLOR_BOTTOM, 1],
+          ]
         })
 
-      Image($r('app.media.ic_center'))
-        .width(StyleConstants.CENTER_IMAGE_WIDTH)
-        .height(StyleConstants.CENTER_IMAGE_HEIGHT)
-        .enabled(this.enableFlag)
-        .onClick(() => {
-          this.enableFlag = !this.enableFlag;
-          this.startAnimator();
-        })
+      // Star particle overlay
+      StarParticle()
+
+      // Main content column (to fit Tabs + check-in badge)
+      Column() {
+        // Check-in badge (top-right corner, only on first tab)
+        if (this.currentIndex === 0) {
+          Row() {
+            if (this.checkedIn) {
+              Text(`✅ 已签到 ${this.checkInDays} 天`)
+                .fontSize(11).fontColor('rgba(255,215,0,0.6)')
+            } else {
+              Text('📅 签到')
+                .fontSize(12).fontColor('#FFD700').fontWeight(600)
+                .onClick(() => { this.doCheckIn(); })
+            }
+          }
+          .width('100%')
+          .justifyContent(FlexAlign.End)
+          .padding({ right: 16, top: 8 })
+        }
+
+        // Tabs
+        Tabs({ barPosition: BarPosition.End, index: this.currentIndex }) {
+          TabContent() { WheelView() }
+            .tabBar(this.tabBuilder(0))
+          TabContent() { ScratchCardView() }
+            .tabBar(this.tabBuilder(1))
+          TabContent() { HistoryView() }
+            .tabBar(this.tabBuilder(2))
+        }
+        .width(StyleConstants.FULL_PERCENT)
+        .height(StyleConstants.FULL_PERCENT)
+        .onChange((idx: number) => { this.currentIndex = idx; })
+      }
+      .width(StyleConstants.FULL_PERCENT)
+      .height(StyleConstants.FULL_PERCENT)
     }
     .width(StyleConstants.FULL_PERCENT)
     .height(StyleConstants.FULL_PERCENT)
-    .backgroundImage($r('app.media.ic_background'), ImageRepeat.NoRepeat)
-    .backgroundImageSize({
-      width: StyleConstants.FULL_PERCENT,
-      height: StyleConstants.BACKGROUND_IMAGE_SIZE
-    })
   }
 
-  /**
-   * Start animator.
-   */
-  startAnimator() {
-    let randomAngle = Math.round(Math.random() * CommonConstants.CIRCLE);
-    // Obtaining prize information.
-    this.prizeData = this.drawModel.showPrizeData(randomAngle);
-
-    this.getUIContext().animateTo({
-      duration: CommonConstants.DURATION,
-      curve: Curve.Ease,
-      delay: 0,
-      iterations: 1,
-      playMode: PlayMode.Normal,
-      onFinish: () => {
-        this.rotateDegree = CommonConstants.ANGLE - randomAngle;
-        // Display prize information pop-up window.
-        this.dialogController.open();
+  @Builder
+  tabBuilder(index: number) {
+    Column() {
+      if (index === 0) {
+        Text('🎡').fontSize(18).margin({ bottom: 1 })
+        Text('转盘').fontSize(10).fontColor('#FFFFFF')
+          .fontWeight(index === this.currentIndex ? 700 : 400)
+      } else if (index === 1) {
+        Text('🎫').fontSize(18).margin({ bottom: 1 })
+        Text('刮刮乐').fontSize(10).fontColor('#FFFFFF')
+          .fontWeight(index === this.currentIndex ? 700 : 400)
+      } else {
+        Text('📊').fontSize(18).margin({ bottom: 1 })
+        Text('记录').fontSize(10).fontColor('#FFFFFF')
+          .fontWeight(index === this.currentIndex ? 700 : 400)
       }
-    }, () => {
-      this.rotateDegree = CommonConstants.CIRCLE * CommonConstants.FIVE +
-      CommonConstants.ANGLE - randomAngle;
-    })
+    }
+    .padding({ top: 6, bottom: 10 })
+    .width(72)
   }
 }

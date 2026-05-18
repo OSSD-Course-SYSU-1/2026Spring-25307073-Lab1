@@ -1,64 +1,45 @@
-/*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
- * Color constants for all Component.
- */
 export default class ColorConstants {
-  /**
-   * Flower out color.
-   */
-  static readonly FLOWER_OUT_COLOR: string = '#ED6E21';
+  /** Sector gradient color1 (6 sectors) */
+  static readonly SECTOR_COLOR1: string[] = [
+    '#FF6B9D', '#FF9A56', '#00D2FF',
+    '#FF6B9D', '#FF9A56', '#00D2FF'
+  ];
 
-  /**
-   * Flower inner color.
-   */
-  static readonly FLOWER_INNER_COLOR: string = '#F8A01E';
+  /** Sector gradient color2 (6 sectors) */
+  static readonly SECTOR_COLOR2: string[] = [
+    '#C44AFF', '#FFD93D', '#3A7BD5',
+    '#C44AFF', '#FFD93D', '#3A7BD5'
+  ];
 
-  /**
-   * Out circle color.
-   */
-  static readonly OUT_CIRCLE_COLOR: string = '#F7CD03';
+  /** Outer ring */
+  static readonly OUTER_RING_COLOR: string = '#1A1A2E';
+  static readonly OUTER_RING_GLOW: string = '#4A4A8A';
 
-  /**
-   * White_color.
-   */
-  static readonly WHITE_COLOR: string = '#FFFFFF';
+  /** Decorative rotating ring */
+  static readonly DECO_RING_COLOR: string = '#FFD700';
+  static readonly DECO_RING_DOT_COLOR: string = '#FFA500';
 
-  /**
-   * Inner circle color.
-   */
-  static readonly INNER_CIRCLE_COLOR: string = '#F8A01E';
+  /** Inner circle */
+  static readonly INNER_CIRCLE_COLOR: string = '#2D2D5E';
+  static readonly INNER_GLOW_COLOR: string = '#6C6CFF';
 
-  /**
-   * Arc pink color.
-   */
-  static readonly ARC_PINK_COLOR: string = '#FFC6BD';
+  /** Center button */
+  static readonly CENTER_BUTTON_GLOW: string = '#FFD700';
+  static readonly CENTER_BUTTON_INNER: string = '#FFFFFF';
 
-  /**
-   * Arc yellow color.
-   */
-  static readonly ARC_YELLOW_COLOR: string = '#FFEC90';
+  /** Text */
+  static readonly TEXT_COLOR: string = '#FFFFFF';
+  static readonly TEXT_SHADOW: string = '#000000';
 
-  /**
-   * Arc green color.
-   */
-  static readonly ARC_GREEN_COLOR: string = '#ECF9C7'
+  /** Background */
+  static readonly BG_COLOR_TOP: string = '#0F0C29';
+  static readonly BG_COLOR_MID: string = '#302B63';
+  static readonly BG_COLOR_BOTTOM: string = '#24243E';
 
-  /**
-   * Text color.
-   */
-  static readonly TEXT_COLOR: string = '#ED6E21';
+  /** Star particle */
+  static readonly STAR_COLOR: string = '#FFFFFF';
+
+  /** Scratch card */
+  static readonly SCRATCH_COAT_COLOR1: string = '#FFD700';
+  static readonly SCRATCH_COAT_COLOR2: string = '#FFA500';
 }

@@ -48,5 +48,5 @@ export default class StyleConstants {
   /**
    * Arc text size.
    */
-  static readonly ARC_TEXT_SIZE: number = uiContext!.fp2px(14);
+  static readonly ARC_TEXT_SIZE: number = uiContext!.fp2px(22);
 }

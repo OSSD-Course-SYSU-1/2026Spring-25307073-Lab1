@@ -14,20 +14,29 @@ export default class DrawModel {
   private screenWidth: number = 0;
   private canvasContext?: CanvasRenderingContext2D;
 
-  draw(canvasContext: CanvasRenderingContext2D, screenWidth: number, screenHeight: number): void {
+  draw(canvasContext: CanvasRenderingContext2D, screenWidth: number, screenHeight: number,
+    timeMs?: number, glowIntensity?: number): void {
     if (CheckEmptyUtils.isEmptyObj(canvasContext)) {
       Logger.error('[DrawModel][draw] canvasContext is empty.');
       return;
     }
     this.canvasContext = canvasContext;
     this.screenWidth = screenWidth;
+    this.startAngle = 0;
     this.canvasContext.clearRect(0, 0, this.screenWidth, screenHeight);
     this.canvasContext.translate(this.screenWidth / CommonConstants.TWO,
       screenHeight / CommonConstants.TWO);
 
+    this.drawOuterRing(glowIntensity);
+    this.drawDecoRing();
+    this.drawInnerCircle();
     this.drawInnerArc();       // Gradient fan sectors (full wheel)
+    if (timeMs !== undefined) {
+      this.drawShimmer(timeMs);
+    }
     this.drawArcText();        // White text with shadow
     this.drawImage();          // Prize emoji
+    this.drawCenterGlow();
 
     this.canvasContext.translate(-this.screenWidth / CommonConstants.TWO,
       -screenHeight / CommonConstants.TWO);
@@ -62,7 +71,7 @@ export default class DrawModel {
   }
 
   /** Outer ring with glow shadow */
-  drawOuterRing(): void {
+  drawOuterRing(glowIntensity?: number): void {
     const ctx = this.canvasContext;
     if (ctx === undefined) return;
     const radius = this.screenWidth * CommonConstants.OUTER_RING_RATIOS;
@@ -70,7 +79,7 @@ export default class DrawModel {
     // Glow layer
     ctx.save();
     ctx.shadowColor = ColorConstants.OUTER_RING_GLOW;
-    ctx.shadowBlur = CommonConstants.GLOW_BLUR;
+    ctx.shadowBlur = glowIntensity !== undefined ? glowIntensity : CommonConstants.GLOW_BLUR;
     this.fillArc(new FillArcData(0, 0, radius, 0, Math.PI * CommonConstants.TWO),
       ColorConstants.OUTER_RING_COLOR);
     ctx.restore();
@@ -232,6 +241,33 @@ export default class DrawModel {
     // Inner dot
     this.fillArc(new FillArcData(0, 0, this.screenWidth * CommonConstants.INNER_DOT_RATIOS, 0,
       Math.PI * CommonConstants.TWO), ColorConstants.OUTER_RING_COLOR);
+  }
+
+  /** Draw a rotating shimmer highlight sweeping across sectors */
+  drawShimmer(timeMs: number): void {
+    const ctx = this.canvasContext;
+    if (ctx === undefined) return;
+
+    const radius = this.screenWidth * CommonConstants.INNER_ARC_RATIOS;
+    const offset = ((timeMs * 0.05) % CommonConstants.CIRCLE) * Math.PI / CommonConstants.HALF_CIRCLE;
+
+    ctx.save();
+    ctx.globalAlpha = 0.12;
+
+    // Draw a 45° wedge from center with radial gradient
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, radius, offset, offset + Math.PI / 4);
+    ctx.closePath();
+
+    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+    gradient.addColorStop(0, 'rgba(255,255,255,0.25)');
+    gradient.addColorStop(0.5, 'rgba(255,255,255,0.08)');
+    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    ctx.restore();
   }
 
   /** Golden glow ring around center */

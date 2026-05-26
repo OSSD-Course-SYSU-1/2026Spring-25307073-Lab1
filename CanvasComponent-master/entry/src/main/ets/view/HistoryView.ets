@@ -1,4 +1,3 @@
-import Logger from '../common/utils/Logger';
 import StyleConstants from '../common/constants/StyleConstants';
 import CommonConstants from '../common/constants/CommonConstants';
 
@@ -34,50 +33,59 @@ function formatTime(ts: string): string {
 
 @Component
 export default struct HistoryView {
-  @State records: HistoryRow[] = [];
-  @State statsText: string = '';
+  @StorageProp('wheel_history') historyRaw: string = '';
 
-  aboutToAppear(): void {
-    this.loadHistory();
-  }
-
-  onPageShow(): void {
-    this.loadHistory();
-  }
-
-  loadHistory(): void {
-    this.records = [];
-    let total: number = 0;
-    let wins: number = 0;
-
-    const raw: string = AppStorage.get<string>('wheel_history') || '';
+  private getRecords(): HistoryRow[] {
+    const result: HistoryRow[] = [];
+    const raw: string = this.historyRaw;
     if (raw.length > 0) {
       const parts: string[] = raw.split(',');
       for (let i = parts.length - 1; i >= 0; i--) {
         const entry: string[] = parts[i].split('|');
         if (entry.length >= 2) {
-          const ts: string = entry[0];
-          const img: string = entry[1];
-          const row: HistoryRow = {
-            emoji: getEmoji(img),
-            isWin: isWin(img),
-            timeText: formatTime(ts),
-          };
-          this.records.push(row);
-          total++;
-          if (isWin(img)) wins++;
+          result.push({
+            emoji: getEmoji(entry[1]),
+            isWin: isWin(entry[1]),
+            timeText: formatTime(entry[0]),
+          });
         }
       }
     }
-
-    const winRate: number = total > 0 ? Math.round((wins / total) * 100) : 0;
-    this.statsText = '共 ' + total + ' 次 · 中奖率 ' + winRate + '%';
+    return result;
   }
 
-  clearHistory(): void {
-    AppStorage.set('wheel_history', '');
-    this.records = [];
-    this.statsText = '暂无记录';
+  private getStats(records: HistoryRow[]): string {
+    let total: number = records.length;
+    let wins: number = 0;
+    for (let i = 0; i < records.length; i++) {
+      if (records[i].isWin) wins++;
+    }
+    const winRate: number = total > 0 ? Math.round((wins / total) * 100) : 0;
+    return '共 ' + total + ' 次 · 中奖率 ' + winRate + '%';
+  }
+
+  @Builder
+  recordItem(item: HistoryRow) {
+    Row({ space: 12 }) {
+      Text(item.emoji).fontSize(32)
+
+      Column({ space: 4 }) {
+        Text(item.isWin ? '🎉 中奖' : '😅 未中奖')
+          .fontSize(15)
+          .fontColor(item.isWin ? '#FFD700' : 'rgba(255,255,255,0.6)')
+          .fontWeight(600)
+        Text(item.timeText).fontSize(12).fontColor('rgba(255,255,255,0.3)')
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      if (item.isWin) {
+        Text('✨').fontSize(16)
+      }
+    }
+    .padding(12)
+    .backgroundColor('rgba(255,255,255,0.05)')
+    .borderRadius(10)
   }
 
   build() {
@@ -86,43 +94,24 @@ export default struct HistoryView {
         .fontSize(22).fontColor('#FFFFFF').fontWeight(700)
         .margin({ top: 24, bottom: 4 })
 
-      Text(this.statsText)
+      Text(this.getStatsText())
         .fontSize(14).fontColor('rgba(255,255,255,0.5)')
-        .margin({ bottom: 16 })
+        .margin({ bottom: 8 })
 
-      if (this.records.length === 0) {
+      if (this.getRecords().length === 0) {
         Column() {
           Text('🎯').fontSize(48).margin({ bottom: 12 })
           Text('还没有抽奖记录').fontSize(16).fontColor('rgba(255,255,255,0.4)')
-          Text('去转盘或老虎机试试手气吧！').fontSize(14).fontColor('rgba(255,255,255,0.3)')
+          Text('去转盘试试手气吧！').fontSize(14).fontColor('rgba(255,255,255,0.3)')
         }
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
         .alignItems(HorizontalAlign.Center)
       } else {
         List({ space: 8 }) {
-          ForEach(this.records, (item: HistoryRow) => {
+          ForEach(this.getRecords(), (item: HistoryRow) => {
             ListItem() {
-              Row({ space: 12 }) {
-                Text(item.emoji).fontSize(32)
-
-                Column({ space: 4 }) {
-                  Text(item.isWin ? '🎉 中奖' : '😅 未中奖')
-                    .fontSize(15)
-                    .fontColor(item.isWin ? '#FFD700' : 'rgba(255,255,255,0.6)')
-                    .fontWeight(600)
-                  Text(item.timeText).fontSize(12).fontColor('rgba(255,255,255,0.3)')
-                }
-                .alignItems(HorizontalAlign.Start)
-                .layoutWeight(1)
-
-                if (item.isWin) {
-                  Text('✨').fontSize(16)
-                }
-              }
-              .padding(12)
-              .backgroundColor('rgba(255,255,255,0.05)')
-              .borderRadius(10)
+              this.recordItem(item)
             }
           }, (item: HistoryRow) => item.timeText + item.emoji)
         }
@@ -136,10 +125,16 @@ export default struct HistoryView {
           .fontColor('rgba(255,255,255,0.5)')
           .borderRadius(20)
           .margin({ bottom: 20 })
-          .onClick(() => { this.clearHistory(); })
+          .onClick(() => {
+            AppStorage.set('wheel_history', '');
+          })
       }
     }
     .width(StyleConstants.FULL_PERCENT)
     .height(StyleConstants.FULL_PERCENT)
+  }
+
+  private getStatsText(): string {
+    return this.getStats(this.getRecords());
   }
 }

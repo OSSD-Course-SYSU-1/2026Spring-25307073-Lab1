@@ -6,6 +6,7 @@ import PrizeData from '../viewmodel/PrizeData';
 import ConfettiEffect from '../view/ConfettiEffect';
 import StyleConstants from '../common/constants/StyleConstants';
 import CommonConstants from '../common/constants/CommonConstants';
+import ColorConstants from '../common/constants/ColorConstants';
 import { Context } from '@kit.AbilityKit';
 import { BusinessError, commonEventManager } from '@kit.BasicServicesKit';
 import { i18n } from '@kit.LocalizationKit';
@@ -42,6 +43,9 @@ export default struct WheelView {
   private lastLang: string = 'zh-Hans';
   private subscriber: commonEventManager.CommonEventSubscriber | null = null;
   private breatheTimer: number = -1;
+  private overlayContext: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
+  private shimmerTimer: number = -1;
+  @State isSpinning: boolean = false;
 
   dialogController: CustomDialogController = new CustomDialogController({
     builder: PrizeDialog({ prizeData: $prizeData, enableFlag: $enableFlag }),
@@ -78,6 +82,7 @@ export default struct WheelView {
       });
 
     this.startBreathing();
+    this.startShimmerAnimation();
   }
 
   startBreathing(): void {
@@ -93,6 +98,72 @@ export default struct WheelView {
     animate();
   }
 
+  /** Draw fixed pointer + glow + shimmer on overlay canvas */
+  renderOverlay(): void {
+    if (this.screenWidth <= 0) return;
+    const ctx = this.overlayContext;
+    const cx: number = this.screenWidth / CommonConstants.TWO;
+    const cy: number = this.screenHeight / CommonConstants.TWO;
+    ctx.clearRect(0, 0, this.screenWidth, this.screenHeight);
+
+    // 1. Pointer triangle (golden, fixed position)
+    const pointerRadius: number = this.screenWidth * CommonConstants.OUTER_RING_RATIOS + 10;
+    ctx.save();
+    ctx.shadowColor = '#FFD700';
+    ctx.shadowBlur = 15;
+    ctx.fillStyle = '#FFD700';
+    ctx.strokeStyle = '#FFA500';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 10, cy - pointerRadius);
+    ctx.lineTo(cx + 10, cy - pointerRadius);
+    ctx.lineTo(cx, cy - pointerRadius + 28);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    // 2. Enhanced glow ring during spin (stroke only, no dark fill)
+    if (this.isSpinning) {
+      const ringRadius: number = this.screenWidth * CommonConstants.OUTER_RING_RATIOS;
+      ctx.save();
+      ctx.shadowColor = ColorConstants.OUTER_RING_GLOW;
+      ctx.shadowBlur = 45;
+      ctx.beginPath();
+      ctx.arc(cx, cy, ringRadius, 0, Math.PI * CommonConstants.TWO);
+      ctx.strokeStyle = ColorConstants.OUTER_RING_GLOW;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 3. Shimmer highlight (rotating wedge)
+    const now: number = Date.now();
+    const shimmerRadius: number = this.screenWidth * CommonConstants.INNER_ARC_RATIOS;
+    const shimmerOffset: number = ((now * 0.04) % CommonConstants.CIRCLE) * Math.PI / CommonConstants.HALF_CIRCLE;
+    ctx.save();
+    ctx.globalAlpha = 0.12;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, shimmerRadius, shimmerOffset, shimmerOffset + Math.PI / 4);
+    ctx.closePath();
+    const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, shimmerRadius);
+    gradient.addColorStop(0, 'rgba(255,255,255,0.25)');
+    gradient.addColorStop(0.5, 'rgba(255,255,255,0.08)');
+    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  startShimmerAnimation(): void {
+    const animate = (): void => {
+      this.renderOverlay();
+      this.shimmerTimer = setTimeout(animate, 33);
+    };
+    animate();
+  }
+
   onPageShow(): void {
     if (this.lastLang !== this.currentLang) {
       this.drawModel.draw(this.canvasContext, this.screenWidth, this.screenHeight);
@@ -103,6 +174,7 @@ export default struct WheelView {
   aboutToDisappear(): void {
     if (this.subscriber) { commonEventManager.unsubscribe(this.subscriber, () => {}); }
     if (this.breatheTimer > 0) clearTimeout(this.breatheTimer);
+    if (this.shimmerTimer > 0) clearTimeout(this.shimmerTimer);
   }
 
   vibrate(_duration: number): void {
@@ -112,12 +184,14 @@ export default struct WheelView {
   spinOnce(): PrizeData {
     const angle = Math.round(Math.random() * CommonConstants.CIRCLE);
     this.prizeData = this.drawModel.showPrizeData(angle);
+    this.isSpinning = true;
 
     this.getUIContext().animateTo({
       duration: CommonConstants.DURATION,
       curve: Curve.Ease,
       onFinish: () => {
         this.rotateDegree = CommonConstants.ANGLE - angle;
+        this.isSpinning = false;
         this.onSpinFinished();
       }
     }, () => {
@@ -234,6 +308,12 @@ export default struct WheelView {
           centerX: this.screenWidth / CommonConstants.TWO,
           centerY: this.screenHeight / CommonConstants.TWO,
         })
+
+      // Overlay Canvas for fixed pointer + shimmer + glow
+      Canvas(this.overlayContext)
+        .width(StyleConstants.FULL_PERCENT)
+        .height(StyleConstants.FULL_PERCENT)
+        .hitTestBehavior(HitTestMode.None)
 
       Image($r('app.media.ic_center'))
         .width(StyleConstants.CENTER_IMAGE_WIDTH)

@@ -13,6 +13,17 @@ interface ScratchPrize {
   imageSrc: string;
 }
 
+interface SparkleParticle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  color: string;
+  life: number;
+  maxLife: number;
+}
+
 @Component
 export default struct ScratchCardView {
   private settings: RenderingContextSettings = new RenderingContextSettings(true);
@@ -30,6 +41,10 @@ export default struct ScratchCardView {
   private totalPixels: number = 0;
   private isScratching: boolean = false;
   private canvasInitialized: boolean = false;
+  private sparkleContext: CanvasRenderingContext2D = new CanvasRenderingContext2D(new RenderingContextSettings(true));
+  private sparkles: SparkleParticle[] = [];
+  private sparkleTimer: number = -1;
+  private sparkleColors: string[] = ['#FFD700', '#FFFFFF', '#FFA500', '#FFE4B5'];
   private currentPrize: ScratchPrize = {
     message: $r('app.string.prize_text_smile'),
     imageSrc: CommonConstants.SMILE_IMAGE_URL
@@ -51,6 +66,10 @@ export default struct ScratchCardView {
       .catch((error: Error) => {
         Logger.error('Failed window size: ' + JSON.stringify(error));
       });
+  }
+
+  aboutToDisappear(): void {
+    if (this.sparkleTimer > 0) clearTimeout(this.sparkleTimer);
   }
 
   initCard(): void {
@@ -210,6 +229,8 @@ export default struct ScratchCardView {
     ctx.fill();
     ctx.restore();
 
+    this.spawnSparkles(x, y);
+
     this.scratchedPixels += Math.PI * 24 * 24;
     this.scratchPercent = Math.min(100, Math.round((this.scratchedPixels / this.totalPixels) * 100));
 
@@ -248,7 +269,64 @@ export default struct ScratchCardView {
   }
 
   newCard(): void {
+    this.sparkles = [];
+    if (this.sparkleTimer > 0) clearTimeout(this.sparkleTimer);
+    this.sparkleTimer = -1;
     this.initCard();
+  }
+
+  spawnSparkles(x: number, y: number): void {
+    for (let i = 0; i < 4; i++) {
+      const angle: number = Math.random() * Math.PI * CommonConstants.TWO;
+      const speed: number = Math.random() * 3 + 1;
+      this.sparkles.push({
+        x: x, y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 1,
+        size: Math.random() * 4 + 2,
+        color: this.sparkleColors[Math.floor(Math.random() * this.sparkleColors.length)],
+        life: 1,
+        maxLife: Math.random() * 15 + 15,
+      });
+    }
+    this.startSparkleTimer();
+  }
+
+  startSparkleTimer(): void {
+    if (this.sparkleTimer > 0) return;
+    const animate = (): void => {
+      const ctx = this.sparkleContext;
+      ctx.clearRect(0, 0, this.screenWidth, this.screenHeight);
+      let alive: boolean = false;
+
+      for (let i = 0; i < this.sparkles.length; i++) {
+        const p: SparkleParticle = this.sparkles[i];
+        if (p.life <= 0) continue;
+        alive = true;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.05;
+        p.life -= 1 / p.maxLife;
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 4;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * CommonConstants.TWO);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      if (alive) {
+        this.sparkleTimer = setTimeout(animate, 16);
+      } else {
+        this.sparkleTimer = -1;
+        ctx.clearRect(0, 0, this.screenWidth, this.screenHeight);
+      }
+    };
+    this.sparkleTimer = setTimeout(animate, 16);
   }
 
   build() {
@@ -265,23 +343,33 @@ export default struct ScratchCardView {
         .fontColor('rgba(255,255,255,0.5)')
         .margin({ bottom: 16 })
 
-      // Card Canvas
-      Canvas(this.canvasContext)
+      // Card Canvas + Sparkles overlay
+      Stack()
         .layoutWeight(1)
-        .width('100%')
-        .onReady(() => {
-          if (!this.canvasInitialized) {
-            this.canvasInitialized = true;
-            this.initCard();
-          } else {
-            this.drawCard();
-          }
-        })
-        .onTouch((event: TouchEvent) => {
-          this.onTouchHandler(event);
-        })
+        .width('100%') {
+        Canvas(this.canvasContext)
+          .width('100%')
+          .height('100%')
+          .onReady(() => {
+            if (!this.canvasInitialized) {
+              this.canvasInitialized = true;
+              this.initCard();
+            } else {
+              this.drawCard();
+            }
+          })
+          .onTouch((event: TouchEvent) => {
+            this.onTouchHandler(event);
+          })
 
-      // Celebration overlay
+        // Sparkle particle overlay
+        Canvas(this.sparkleContext)
+          .width('100%')
+          .height('100%')
+          .hitTestBehavior(HitTestMode.None)
+      }
+
+      // Celebration overlay with new-card button
       if (this.isRevealed) {
         Column() {
           Text('🎉 恭喜中奖 🎉')
@@ -299,6 +387,17 @@ export default struct ScratchCardView {
           Text('✨ 🌟 ✨')
             .fontSize(20)
             .margin({ top: 8 })
+          Button('再来一张')
+            .width(160)
+            .height(40)
+            .backgroundColor('#FFD700')
+            .fontColor('#1A1A2E')
+            .fontWeight(700)
+            .borderRadius(20)
+            .margin({ top: 16 })
+            .onClick(() => {
+              this.newCard();
+            })
         }
         .width('70%')
         .padding(20)
@@ -311,19 +410,7 @@ export default struct ScratchCardView {
       }
 
       // Bottom area
-      if (this.isRevealed) {
-        Button('再来一张')
-          .width(200)
-          .height(44)
-          .backgroundColor('#FFD700')
-          .fontColor('#1A1A2E')
-          .fontWeight(700)
-          .borderRadius(22)
-          .margin({ bottom: 16 })
-          .onClick(() => {
-            this.newCard();
-          })
-      } else {
+      if (!this.isRevealed) {
         Text(`已刮 ${this.scratchPercent}%`)
           .fontSize(13)
           .fontColor('rgba(255,255,255,0.3)')

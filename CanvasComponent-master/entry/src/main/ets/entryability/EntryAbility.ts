@@ -14,12 +14,14 @@
  */
 
 
-import { UIAbility } from '@kit.AbilityKit';
+import { AbilityConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { window } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 
 export default class EntryAbility extends UIAbility {
-  onCreate(want, launchParam) {
+  onCreate(want: Want, launchParam: AbilityConstant.LaunchParam) {
+    this.initStorage();
+    this.restoreContinueData(want);
     hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onCreate');
   }
 
@@ -38,8 +40,47 @@ export default class EntryAbility extends UIAbility {
       }
       hilog.info(0x0000, 'testTag', 'Succeeded in loading the content. Data: %{public}s', JSON.stringify(data) ?? '');
       AppStorage.setOrCreate('uiContext', windowStage.getMainWindowSync().getUIContext());
-      PersistentStorage.persistProp('wheel_history', '');
     });
+  }
+
+  onNewWant(want: Want) {
+    this.restoreContinueData(want);
+    hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onNewWant');
+  }
+
+  onContinue(wantParam: Record<string, Object>): AbilityConstant.OnContinueResult {
+    wantParam['currentIndex'] = AppStorage.get<number>('currentIndex') || 0;
+    wantParam['wheelHistory'] = AppStorage.get<string>('wheel_history') || '';
+    wantParam['lastCheckIn'] = AppStorage.get<string>('last_checkin') || '';
+    wantParam['checkInStreak'] = AppStorage.get<number>('checkin_streak') || 0;
+    hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onContinue');
+    return AbilityConstant.OnContinueResult.AGREE;
+  }
+
+  private initStorage(): void {
+    AppStorage.setOrCreate('currentIndex', AppStorage.get<number>('currentIndex') || 0);
+    PersistentStorage.persistProp('wheel_history', '');
+    PersistentStorage.persistProp('last_checkin', '');
+    PersistentStorage.persistProp('checkin_streak', 0);
+  }
+
+  private restoreContinueData(want: Want): void {
+    if (want === undefined || want.parameters === undefined) {
+      return;
+    }
+    const params = want.parameters;
+    if (params['currentIndex'] !== undefined) {
+      AppStorage.setOrCreate('currentIndex', params['currentIndex'] as number);
+    }
+    if (params['wheelHistory'] !== undefined) {
+      AppStorage.setOrCreate('wheel_history', params['wheelHistory'] as string);
+    }
+    if (params['lastCheckIn'] !== undefined) {
+      AppStorage.setOrCreate('last_checkin', params['lastCheckIn'] as string);
+    }
+    if (params['checkInStreak'] !== undefined) {
+      AppStorage.setOrCreate('checkin_streak', params['checkInStreak'] as number);
+    }
   }
 
   onWindowStageDestroy() {

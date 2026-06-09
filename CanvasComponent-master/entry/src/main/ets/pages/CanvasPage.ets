@@ -16,7 +16,7 @@ let context: Context = uiContext!.getHostContext()!;
 @Entry
 @Component
 struct CanvasPage {
-  @State currentIndex: number = 0;
+  @StorageLink('currentIndex') currentIndex: number = 0;
   @State checkedIn: boolean = false;
   @State checkInDays: number = 0;
   @State currentBreakpoint: string = 'sm';

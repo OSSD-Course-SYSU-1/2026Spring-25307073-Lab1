@@ -19,13 +19,36 @@ struct CanvasPage {
   @State currentIndex: number = 0;
   @State checkedIn: boolean = false;
   @State checkInDays: number = 0;
+  @State currentBreakpoint: string = 'sm';
 
   aboutToAppear(): void {
     window.getLastWindow(context)
-      .then((wc) => { wc.setWindowLayoutFullScreen(true); })
+      .then((wc) => {
+        wc.setWindowLayoutFullScreen(true);
+        const wp = wc.getWindowProperties();
+        const vpW = uiContext!.px2vp(wp.windowRect.width);
+        const vpH = uiContext!.px2vp(wp.windowRect.height);
+        this.currentBreakpoint = Math.min(vpW, vpH) >= 600 ? 'md' : 'sm';
+        this.updateContentSize(vpW, vpH);
+
+        wc.on('windowSizeChange', (size: window.Size) => {
+          const w = uiContext!.px2vp(size.width);
+          const h = uiContext!.px2vp(size.height);
+          this.currentBreakpoint = Math.min(w, h) >= 600 ? 'md' : 'sm';
+          this.updateContentSize(w, h);
+        });
+      })
       .catch((e: Error) => { Logger.error('Fullscreen error: ' + JSON.stringify(e)); });
 
     this.checkDaily();
+  }
+
+  updateContentSize(fullW: number, fullH: number): void {
+    const sidebarW = this.currentBreakpoint === 'sm' ? 0 : 90;
+    const cw = fullW - sidebarW;
+    AppStorage.setOrCreate('contentWidth', cw);
+    AppStorage.setOrCreate('contentHeight', fullH);
+    AppStorage.setOrCreate('isLandscape', cw > fullH);
   }
 
   checkDaily(): void {
@@ -99,7 +122,10 @@ struct CanvasPage {
         }
 
         // Tabs
-        Tabs({ barPosition: BarPosition.End, index: this.currentIndex }) {
+        Tabs({
+          barPosition: this.currentBreakpoint === 'sm' ? BarPosition.End : BarPosition.Start,
+          index: this.currentIndex
+        }) {
           TabContent() { WheelView() }
             .tabBar(this.tabBuilder(0))
           TabContent() { ScratchCardView() }
@@ -107,6 +133,9 @@ struct CanvasPage {
           TabContent() { HistoryView() }
             .tabBar(this.tabBuilder(2))
         }
+        .vertical(this.currentBreakpoint !== 'sm')
+        .barWidth(this.currentBreakpoint === 'sm' ? '100%' : 90)
+        .barHeight(this.currentBreakpoint === 'sm' ? undefined : '100%')
         .width(StyleConstants.FULL_PERCENT)
         .height(StyleConstants.FULL_PERCENT)
         .onChange((idx: number) => { this.currentIndex = idx; })
@@ -122,20 +151,29 @@ struct CanvasPage {
   tabBuilder(index: number) {
     Column() {
       if (index === 0) {
-        Text('🎡').fontSize(18).margin({ bottom: 1 })
-        Text('转盘').fontSize(10).fontColor('#FFFFFF')
+        Text('🎡').fontSize(this.currentBreakpoint !== 'sm' ? 26 : 18)
+          .margin({ bottom: this.currentBreakpoint !== 'sm' ? 6 : 1 })
+        Text('转盘').fontSize(this.currentBreakpoint !== 'sm' ? 13 : 10).fontColor('#FFFFFF')
           .fontWeight(index === this.currentIndex ? 700 : 400)
       } else if (index === 1) {
-        Text('🎫').fontSize(18).margin({ bottom: 1 })
-        Text('刮刮乐').fontSize(10).fontColor('#FFFFFF')
+        Text('🎫').fontSize(this.currentBreakpoint !== 'sm' ? 26 : 18)
+          .margin({ bottom: this.currentBreakpoint !== 'sm' ? 6 : 1 })
+        Text('刮刮乐').fontSize(this.currentBreakpoint !== 'sm' ? 13 : 10).fontColor('#FFFFFF')
           .fontWeight(index === this.currentIndex ? 700 : 400)
       } else {
-        Text('📊').fontSize(18).margin({ bottom: 1 })
-        Text('记录').fontSize(10).fontColor('#FFFFFF')
+        Text('📊').fontSize(this.currentBreakpoint !== 'sm' ? 26 : 18)
+          .margin({ bottom: this.currentBreakpoint !== 'sm' ? 6 : 1 })
+        Text('记录').fontSize(this.currentBreakpoint !== 'sm' ? 13 : 10).fontColor('#FFFFFF')
           .fontWeight(index === this.currentIndex ? 700 : 400)
       }
     }
-    .padding({ top: 6, bottom: 10 })
-    .width(72)
+    .padding(this.currentBreakpoint !== 'sm' ? { top: 20, bottom: 20 } : { top: 6, bottom: 10 })
+    .width(this.currentBreakpoint !== 'sm' ? '100%' : 72)
+    .backgroundColor(this.currentBreakpoint !== 'sm' && index === this.currentIndex ? 'rgba(255,215,0,0.12)' : 'transparent')
+    .borderRadius(this.currentBreakpoint !== 'sm' ? 8 : 0)
+    .border({
+      width: (this.currentBreakpoint !== 'sm' && index === this.currentIndex) ? { left: 3 } : {},
+      color: (this.currentBreakpoint !== 'sm' && index === this.currentIndex) ? { left: '#FFD700' } : {}
+    })
   }
 }

@@ -33,6 +33,8 @@ export default struct ScratchCardView {
   @State scratchPercent: number = 0;
   @State isRevealed: boolean = false;
   @State hasNewCard: boolean = true;
+  @StorageProp('isLandscape') isLandscape: boolean = false;
+  private scaleFactor: number = 1.0;
   private cardX: number = 0;
   private cardY: number = 0;
   private cardW: number = 0;
@@ -60,8 +62,16 @@ export default struct ScratchCardView {
     window.getLastWindow(context)
       .then((windowClass: window.Window) => {
         const wp = windowClass.getWindowProperties();
-        this.screenWidth = this.getUIContext().px2vp(wp.windowRect.width);
-        this.screenHeight = this.getUIContext().px2vp(wp.windowRect.height);
+        const vpW = this.getUIContext().px2vp(wp.windowRect.width);
+        const vpH = this.getUIContext().px2vp(wp.windowRect.height);
+        const minDim = Math.min(vpW, vpH);
+        const sidebarW = minDim >= 600 ? 90 : 0;
+        this.screenWidth = vpW - sidebarW;
+        this.screenHeight = vpH;
+        this.scaleFactor = Math.min(this.screenWidth, this.screenHeight) / 360;
+        if (this.canvasInitialized) {
+          this.drawCard();
+        }
       })
       .catch((error: Error) => {
         Logger.error('Failed window size: ' + JSON.stringify(error));
@@ -89,10 +99,18 @@ export default struct ScratchCardView {
 
   drawCard(): void {
     const ctx = this.canvasContext;
-    const cw = this.screenWidth * 0.8;
-    const ch = cw * 1.2;
+    const base = Math.min(this.screenWidth, this.screenHeight);
+    let cw: number;
+    let ch: number;
+    if (this.isLandscape) {
+      ch = Math.min(base * 0.6, 320);
+      cw = Math.min(ch * 1.6, this.screenWidth * 0.85);
+    } else {
+      cw = Math.min(base * 0.75, 420);
+      ch = Math.min(cw * 1.2, this.screenHeight * 0.7);
+    }
     this.cardX = (this.screenWidth - cw) / 2;
-    this.cardY = (this.screenHeight - ch) / 2 - 20;
+    this.cardY = (this.screenHeight - ch) / 2;
     this.cardW = cw;
     this.cardH = ch;
     this.totalPixels = cw * ch;
@@ -112,14 +130,14 @@ export default struct ScratchCardView {
     ctx.save();
     this.roundRect(ctx, this.cardX, this.cardY, cw, ch, 16);
     ctx.strokeStyle = '#FFD700';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 * this.scaleFactor;
     ctx.stroke();
     ctx.restore();
 
     // Prize text
     ctx.save();
     ctx.fillStyle = '#FFD700';
-    ctx.font = '22px sans-serif';
+    ctx.font = `${22 * this.scaleFactor}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const prizeStr = this.getPrizeString();
@@ -127,9 +145,9 @@ export default struct ScratchCardView {
     ctx.restore();
 
     // Prize image (emoji)
-    const imgSize = 80;
+    const imgSize = 80 * this.scaleFactor;
     ctx.save();
-    ctx.font = '64px sans-serif';
+    ctx.font = `${64 * this.scaleFactor}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#FFFFFF';
@@ -141,7 +159,7 @@ export default struct ScratchCardView {
     // Hint text
     ctx.save();
     ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.font = '14px sans-serif';
+    ctx.font = `${14 * this.scaleFactor}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.fillText('刮开涂层查看奖品', this.screenWidth / 2, this.cardY + ch * 0.78);
     ctx.restore();
@@ -160,7 +178,7 @@ export default struct ScratchCardView {
 
     // Scratch hint text on coating
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font = '16px sans-serif';
+    ctx.font = `${16 * this.scaleFactor}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.fillText('👆 用手指刮开', this.screenWidth / 2, this.cardY + ch / 2);
     ctx.restore();
@@ -225,13 +243,14 @@ export default struct ScratchCardView {
     ctx.save();
     ctx.globalCompositeOperation = 'destination-out';
     ctx.beginPath();
-    ctx.arc(x, y, 24, 0, Math.PI * 2);
+    const sr = 24 * this.scaleFactor;
+    ctx.arc(x, y, sr, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
     this.spawnSparkles(x, y);
 
-    this.scratchedPixels += Math.PI * 24 * 24;
+    this.scratchedPixels += Math.PI * sr * sr;
     this.scratchPercent = Math.min(100, Math.round((this.scratchedPixels / this.totalPixels) * 100));
 
     if (this.scratchPercent >= 45 && !this.isRevealed) {
@@ -333,15 +352,15 @@ export default struct ScratchCardView {
     Column() {
       // Title
       Text('🎫 刮刮乐')
-        .fontSize(24)
+        .fontSize(24 * this.scaleFactor)
         .fontColor('#FFFFFF')
         .fontWeight(700)
-        .margin({ top: 12, bottom: 8 })
+        .margin({ top: 12 * this.scaleFactor, bottom: 8 * this.scaleFactor })
 
       Text(this.isRevealed ? '恭喜中奖！' : '手指刮开涂层看看手气')
-        .fontSize(14)
+        .fontSize(14 * this.scaleFactor)
         .fontColor('rgba(255,255,255,0.5)')
-        .margin({ bottom: 16 })
+        .margin({ bottom: 16 * this.scaleFactor })
 
       // Card Canvas + Sparkles overlay
       Stack()
@@ -373,36 +392,36 @@ export default struct ScratchCardView {
       if (this.isRevealed) {
         Column() {
           Text('🎉 恭喜中奖 🎉')
-            .fontSize(24)
+            .fontSize(24 * this.scaleFactor)
             .fontColor('#FFD700')
             .fontWeight(700)
-            .margin({ bottom: 8 })
+            .margin({ bottom: 8 * this.scaleFactor })
           Text(this.getPrizeEmoji())
-            .fontSize(64)
-            .margin({ bottom: 8 })
+            .fontSize(64 * this.scaleFactor)
+            .margin({ bottom: 8 * this.scaleFactor })
           Text(this.getPrizeString())
-            .fontSize(16)
+            .fontSize(16 * this.scaleFactor)
             .fontColor('#FFFFFF')
             .fontWeight(600)
           Text('✨ 🌟 ✨')
-            .fontSize(20)
-            .margin({ top: 8 })
+            .fontSize(20 * this.scaleFactor)
+            .margin({ top: 8 * this.scaleFactor })
           Button('再来一张')
-            .width(160)
-            .height(40)
+            .width(160 * this.scaleFactor)
+            .height(40 * this.scaleFactor)
             .backgroundColor('#FFD700')
             .fontColor('#1A1A2E')
             .fontWeight(700)
-            .borderRadius(20)
-            .margin({ top: 16 })
+            .borderRadius(20 * this.scaleFactor)
+            .margin({ top: 16 * this.scaleFactor })
             .onClick(() => {
               this.newCard();
             })
         }
         .width('70%')
-        .padding(20)
+        .padding(20 * this.scaleFactor)
         .backgroundColor('rgba(30,30,63,0.92)')
-        .borderRadius(16)
+        .borderRadius(16 * this.scaleFactor)
         .border({ width: 1, color: 'rgba(255,215,0,0.4)' })
         .hitTestBehavior(HitTestMode.None)
         .alignItems(HorizontalAlign.Center)
@@ -412,9 +431,9 @@ export default struct ScratchCardView {
       // Bottom area
       if (!this.isRevealed) {
         Text(`已刮 ${this.scratchPercent}%`)
-          .fontSize(13)
+          .fontSize(13 * this.scaleFactor)
           .fontColor('rgba(255,255,255,0.3)')
-          .margin({ bottom: 16 })
+          .margin({ bottom: 16 * this.scaleFactor })
       }
     }
     .width(StyleConstants.FULL_PERCENT)

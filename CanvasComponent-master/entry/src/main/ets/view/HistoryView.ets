@@ -1,5 +1,8 @@
+import { window } from '@kit.ArkUI';
 import StyleConstants from '../common/constants/StyleConstants';
 import CommonConstants from '../common/constants/CommonConstants';
+
+const uiContext: UIContext | undefined = AppStorage.get('uiContext');
 
 interface HistoryRow {
   emoji: string;
@@ -34,6 +37,18 @@ function formatTime(ts: string): string {
 @Component
 export default struct HistoryView {
   @StorageProp('wheel_history') historyRaw: string = '';
+  @State scaleFactor: number = 1.0;
+
+  aboutToAppear(): void {
+    window.getLastWindow(uiContext!.getHostContext()!)
+      .then((wc) => {
+        const wp = wc.getWindowProperties();
+        const vpW = uiContext!.px2vp(wp.windowRect.width);
+        const vpH = uiContext!.px2vp(wp.windowRect.height);
+        const minDim = Math.min(vpW, vpH);
+        this.scaleFactor = minDim / 360;
+      });
+  }
 
   private getRecords(): HistoryRow[] {
     const result: HistoryRow[] = [];
@@ -67,23 +82,23 @@ export default struct HistoryView {
   @Builder
   recordItem(item: HistoryRow) {
     Row({ space: 12 }) {
-      Text(item.emoji).fontSize(32)
+      Text(item.emoji).fontSize(32 * this.scaleFactor)
 
       Column({ space: 4 }) {
         Text(item.isWin ? '🎉 中奖' : '😅 未中奖')
-          .fontSize(15)
+          .fontSize(15 * this.scaleFactor)
           .fontColor(item.isWin ? '#FFD700' : 'rgba(255,255,255,0.6)')
           .fontWeight(600)
-        Text(item.timeText).fontSize(12).fontColor('rgba(255,255,255,0.3)')
+        Text(item.timeText).fontSize(12 * this.scaleFactor).fontColor('rgba(255,255,255,0.3)')
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
 
       if (item.isWin) {
-        Text('✨').fontSize(16)
+        Text('✨').fontSize(16 * this.scaleFactor)
       }
     }
-    .padding(12)
+    .padding(12 * this.scaleFactor)
     .backgroundColor('rgba(255,255,255,0.05)')
     .borderRadius(10)
   }
@@ -91,24 +106,24 @@ export default struct HistoryView {
   build() {
     Column() {
       Text('📊 抽奖记录')
-        .fontSize(22).fontColor('#FFFFFF').fontWeight(700)
-        .margin({ top: 24, bottom: 4 })
+        .fontSize(22 * this.scaleFactor).fontColor('#FFFFFF').fontWeight(700)
+        .margin({ top: 24 * this.scaleFactor, bottom: 4 * this.scaleFactor })
 
       Text(this.getStatsText())
-        .fontSize(14).fontColor('rgba(255,255,255,0.5)')
-        .margin({ bottom: 8 })
+        .fontSize(14 * this.scaleFactor).fontColor('rgba(255,255,255,0.5)')
+        .margin({ bottom: 8 * this.scaleFactor })
 
       if (this.getRecords().length === 0) {
         Column() {
-          Text('🎯').fontSize(48).margin({ bottom: 12 })
-          Text('还没有抽奖记录').fontSize(16).fontColor('rgba(255,255,255,0.4)')
-          Text('去转盘试试手气吧！').fontSize(14).fontColor('rgba(255,255,255,0.3)')
+          Text('🎯').fontSize(48 * this.scaleFactor).margin({ bottom: 12 * this.scaleFactor })
+          Text('还没有抽奖记录').fontSize(16 * this.scaleFactor).fontColor('rgba(255,255,255,0.4)')
+          Text('去转盘试试手气吧！').fontSize(14 * this.scaleFactor).fontColor('rgba(255,255,255,0.3)')
         }
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
         .alignItems(HorizontalAlign.Center)
       } else {
-        List({ space: 8 }) {
+        List({ space: 8 * this.scaleFactor }) {
           ForEach(this.getRecords(), (item: HistoryRow) => {
             ListItem() {
               this.recordItem(item)
@@ -117,14 +132,14 @@ export default struct HistoryView {
         }
         .layoutWeight(1)
         .width('100%')
-        .padding({ left: 16, right: 16 })
+        .padding({ left: 16 * this.scaleFactor, right: 16 * this.scaleFactor })
 
         Button('清空记录')
-          .width(160).height(40)
+          .width(160 * this.scaleFactor).height(40 * this.scaleFactor)
           .backgroundColor('rgba(255,255,255,0.1)')
           .fontColor('rgba(255,255,255,0.5)')
-          .borderRadius(20)
-          .margin({ bottom: 20 })
+          .borderRadius(20 * this.scaleFactor)
+          .margin({ bottom: 20 * this.scaleFactor })
           .onClick(() => {
             AppStorage.set('wheel_history', '');
           })

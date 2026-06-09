@@ -12,6 +12,8 @@ export default class DrawModel {
   private startAngle: number = 0;
   private avgAngle: number = CommonConstants.CIRCLE / CommonConstants.COUNT;
   private screenWidth: number = 0;
+  private screenHeight: number = 0;
+  private baseSize: number = 0;
   private canvasContext?: CanvasRenderingContext2D;
 
   draw(canvasContext: CanvasRenderingContext2D, screenWidth: number, screenHeight: number,
@@ -22,10 +24,12 @@ export default class DrawModel {
     }
     this.canvasContext = canvasContext;
     this.screenWidth = screenWidth;
+    this.screenHeight = screenHeight;
+    this.baseSize = Math.min(screenWidth, screenHeight);
     this.startAngle = 0;
-    this.canvasContext.clearRect(0, 0, this.screenWidth, screenHeight);
+    this.canvasContext.clearRect(0, 0, this.screenWidth, this.screenHeight);
     this.canvasContext.translate(this.screenWidth / CommonConstants.TWO,
-      screenHeight / CommonConstants.TWO);
+      this.screenHeight / CommonConstants.TWO);
 
     this.drawOuterRing(glowIntensity);
     this.drawDecoRing();
@@ -74,7 +78,7 @@ export default class DrawModel {
   drawOuterRing(glowIntensity?: number): void {
     const ctx = this.canvasContext;
     if (ctx === undefined) return;
-    const radius = this.screenWidth * CommonConstants.OUTER_RING_RATIOS;
+    const radius = this.baseSize * CommonConstants.OUTER_RING_RATIOS;
 
     // Glow layer
     ctx.save();
@@ -93,7 +97,7 @@ export default class DrawModel {
   drawDecoRing(): void {
     const ctx = this.canvasContext;
     if (ctx === undefined) return;
-    const radius = this.screenWidth * CommonConstants.DECO_RING_RATIOS;
+    const radius = this.baseSize * CommonConstants.DECO_RING_RATIOS;
 
     // Golden ring line
     ctx.save();
@@ -125,7 +129,7 @@ export default class DrawModel {
 
   /** Gradient fan sectors */
   drawInnerArc(): void {
-    const radius = this.screenWidth * CommonConstants.INNER_ARC_RATIOS;
+    const radius = this.baseSize * CommonConstants.INNER_ARC_RATIOS;
     const colors1 = ColorConstants.SECTOR_COLOR1;
     const colors2 = ColorConstants.SECTOR_COLOR2;
     for (let i = 0; i < CommonConstants.COUNT; i++) {
@@ -180,8 +184,8 @@ export default class DrawModel {
     const ctx = this.canvasContext;
     if (ctx === undefined) return;
 
-    const radius = this.screenWidth * CommonConstants.INNER_ARC_RATIOS
-      - this.screenWidth * CommonConstants.INNER_ARC_RATIOS / CommonConstants.COUNT;
+    const radius = this.baseSize * CommonConstants.INNER_ARC_RATIOS
+      - this.baseSize * CommonConstants.INNER_ARC_RATIOS / CommonConstants.COUNT;
     const angleDecrement = (startAngle - endAngle) / (textString.length - 1);
     let angle = startAngle;
     let index = 0;
@@ -214,8 +218,8 @@ export default class DrawModel {
       ctx.save();
       ctx.rotate(beginAngle * Math.PI / CommonConstants.HALF_CIRCLE);
       ctx.fillText(emojis[i],
-        this.screenWidth * CommonConstants.IMAGE_DX_RATIOS + CommonConstants.IMAGE_SIZE / 2,
-        this.screenWidth * CommonConstants.IMAGE_DY_RATIOS + CommonConstants.IMAGE_SIZE / 2);
+        this.baseSize * CommonConstants.IMAGE_DX_RATIOS + CommonConstants.IMAGE_SIZE / 2,
+        this.baseSize * CommonConstants.IMAGE_DY_RATIOS + CommonConstants.IMAGE_SIZE / 2);
       beginAngle += this.avgAngle;
       ctx.restore();
     }
@@ -230,16 +234,16 @@ export default class DrawModel {
     ctx.save();
     ctx.shadowColor = ColorConstants.INNER_GLOW_COLOR;
     ctx.shadowBlur = CommonConstants.GLOW_BLUR;
-    this.fillArc(new FillArcData(0, 0, this.screenWidth * CommonConstants.INNER_CIRCLE_RATIOS, 0,
+    this.fillArc(new FillArcData(0, 0, this.baseSize * CommonConstants.INNER_CIRCLE_RATIOS, 0,
       Math.PI * CommonConstants.TWO), ColorConstants.INNER_CIRCLE_COLOR);
     ctx.restore();
 
     // Main circle
-    this.fillArc(new FillArcData(0, 0, this.screenWidth * CommonConstants.INNER_CIRCLE_RATIOS, 0,
+    this.fillArc(new FillArcData(0, 0, this.baseSize * CommonConstants.INNER_CIRCLE_RATIOS, 0,
       Math.PI * CommonConstants.TWO), ColorConstants.INNER_CIRCLE_COLOR);
 
     // Inner dot
-    this.fillArc(new FillArcData(0, 0, this.screenWidth * CommonConstants.INNER_DOT_RATIOS, 0,
+    this.fillArc(new FillArcData(0, 0, this.baseSize * CommonConstants.INNER_DOT_RATIOS, 0,
       Math.PI * CommonConstants.TWO), ColorConstants.OUTER_RING_COLOR);
   }
 
@@ -248,7 +252,7 @@ export default class DrawModel {
     const ctx = this.canvasContext;
     if (ctx === undefined) return;
 
-    const radius = this.screenWidth * CommonConstants.INNER_ARC_RATIOS;
+    const radius = this.baseSize * CommonConstants.INNER_ARC_RATIOS;
     const offset = ((timeMs * 0.05) % CommonConstants.CIRCLE) * Math.PI / CommonConstants.HALF_CIRCLE;
 
     ctx.save();
@@ -278,7 +282,7 @@ export default class DrawModel {
     ctx.shadowColor = ColorConstants.CENTER_BUTTON_GLOW;
     ctx.shadowBlur = 25;
     ctx.beginPath();
-    ctx.arc(0, 0, this.screenWidth * CommonConstants.INNER_DOT_RATIOS + 6, 0,
+    ctx.arc(0, 0, this.baseSize * CommonConstants.INNER_DOT_RATIOS + 6, 0,
       Math.PI * CommonConstants.TWO);
     ctx.strokeStyle = ColorConstants.CENTER_BUTTON_GLOW;
     ctx.lineWidth = 2;

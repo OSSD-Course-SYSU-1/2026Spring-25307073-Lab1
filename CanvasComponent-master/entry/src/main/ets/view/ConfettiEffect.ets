@@ -1,3 +1,5 @@
+import { display } from '@kit.ArkUI';
+
 interface Particle {
   x: number;
   y: number;
@@ -19,6 +21,22 @@ export default struct ConfettiEffect {
   private animTimer: number = -1;
   private canvasWidth: number = 500;
   private canvasHeight: number = 800;
+  private baseSize: number = 360;
+
+  aboutToAppear(): void {
+    const uiCtx: UIContext | undefined = AppStorage.get('uiContext');
+    if (uiCtx !== undefined) {
+      try {
+        const ctx = uiCtx.getHostContext();
+        const disp = display.getDefaultDisplaySync();
+        this.canvasWidth = uiCtx.px2vp(disp.width);
+        this.canvasHeight = uiCtx.px2vp(disp.height);
+        this.baseSize = Math.min(this.canvasWidth, this.canvasHeight);
+      } catch (_e) {
+        // fallback to defaults
+      }
+    }
+  }
 
   private colors: string[] = [
     '#FF6B9D', '#C44AFF', '#FFD93D', '#FF9A56',
@@ -27,16 +45,17 @@ export default struct ConfettiEffect {
   ];
 
   trigger(): void {
+    const s = this.baseSize / 360;
     this.particles = [];
     for (let i = 0; i < 80; i++) {
       const angle: number = Math.random() * Math.PI * 2;
-      const speed: number = Math.random() * 8 + 3;
+      const speed: number = Math.random() * 8 * s + 3 * s;
       const p: Particle = {
-        x: this.canvasWidth / 2 + (Math.random() - 0.5) * 100,
+        x: this.canvasWidth / 2 + (Math.random() - 0.5) * 100 * s,
         y: this.canvasHeight / 2,
         vx: Math.cos(angle) * speed * (0.5 + Math.random()),
-        vy: Math.sin(angle) * speed * (0.5 + Math.random()) - 3,
-        size: Math.random() * 8 + 4,
+        vy: Math.sin(angle) * speed * (0.5 + Math.random()) - 3 * s,
+        size: Math.random() * 8 * s + 4 * s,
         color: this.colors[Math.floor(Math.random() * this.colors.length)],
         life: 1,
         maxLife: Math.random() * 60 + 60,

@@ -1727,22 +1727,40 @@ struct CanvasPage {
   @State currentIndex: number = 0;
   @State checkedIn: boolean = false;
   @State checkInDays: number = 0;
+  @State currentBreakpoint: string = 'sm';
 ```
 **功能**: 
 - `currentIndex`: 当前Tab索引（0=转盘，1=刮刮乐，2=记录）
 - `checkedIn`: 今天是否已签到
 - `checkInDays`: 连续签到天数
+- `currentBreakpoint`: 当前断点（'sm'=手机底部Tab，'md'/'lg'等=平板侧边栏）
 
 #### 8.2 aboutToAppear
+
 ```typescript
 aboutToAppear(): void {
   window.getLastWindow(context)
-    .then((wc) => { wc.setWindowLayoutFullScreen(true); })
+    .then((wc) => {
+      wc.setWindowLayoutFullScreen(true);
+
+      // 断点检测
+      const wp = wc.getWindowProperties();
+      const vpW = uiContext!.px2vp(wp.windowRect.width);
+      const vpH = uiContext!.px2vp(wp.windowRect.height);
+      this.currentBreakpoint = Math.min(vpW, vpH) >= 600 ? 'md' : 'sm';
+
+      // 监听窗口变化
+      wc.on('windowSizeChange', (size: window.Size) => {
+        const w = uiContext!.px2vp(size.width);
+        const h = uiContext!.px2vp(size.height);
+        this.currentBreakpoint = Math.min(w, h) >= 600 ? 'md' : 'sm';
+      });
+    })
     .catch((e: Error) => { Logger.error('Fullscreen error: ' + JSON.stringify(e)); });
   this.checkDaily();
 }
 ```
-**功能**: 设置全屏 + 检查今日签到状态。
+**功能**: 设置全屏 + 检测初始断点（短边≥600vp为平板模式）+ 监听窗口大小变化自动切换布局 + 检查今日签到状态。
 
 #### 8.3 checkDaily - 签到检查
 ```typescript
@@ -1840,8 +1858,11 @@ build() {
 - 已签到：半透明金色"✅ 已签到 X 天"
 
 ```typescript
-      // Tabs
-      Tabs({ barPosition: BarPosition.End, index: this.currentIndex }) {
+      // Tabs (响应式: 手机底部Tab / 平板左侧侧边栏)
+      Tabs({
+        barPosition: this.currentBreakpoint === 'sm' ? BarPosition.End : BarPosition.Start,
+        index: this.currentIndex
+      }) {
         TabContent() { WheelView() }
           .tabBar(this.tabBuilder(0))
         TabContent() { ScratchCardView() }
@@ -1849,40 +1870,157 @@ build() {
         TabContent() { HistoryView() }
           .tabBar(this.tabBuilder(2))
       }
+      .vertical(this.currentBreakpoint !== 'sm')
+      .barWidth(this.currentBreakpoint === 'sm' ? '100%' : 90)
+      .barHeight(this.currentBreakpoint === 'sm' ? undefined : '100%')
       .width(StyleConstants.FULL_PERCENT)
       .height(StyleConstants.FULL_PERCENT)
       .onChange((idx: number) => { this.currentIndex = idx; })
-    }
 ```
 **功能**: 
-- `Tabs`组件：`barPosition.End`标签栏在底部
-- 三个Tab页：转盘、刮刮乐、记录
+- `Tabs`组件：`barPosition`在手机端为`End`(底部)，平板端为`Start`(左侧)
+- `.vertical()`控制Tab方向，平板端为竖向侧边栏
+- `.barWidth()`平板端90vp侧边栏宽度
 - `.onChange`监听Tab切换更新`currentIndex`
 
-#### 8.6 tabBuilder - 自定义标签栏
+#### 8.6 tabBuilder - 自定义标签栏（已更新为响应式）
+
 ```typescript
 @Builder
 tabBuilder(index: number) {
+  const isTablet: boolean = this.currentBreakpoint !== 'sm';
+  const isActive: boolean = index === this.currentIndex;
   Column() {
     if (index === 0) {
-      Text('🎡').fontSize(18).margin({ bottom: 1 })
-      Text('转盘').fontSize(10).fontColor('#FFFFFF')
-        .fontWeight(index === this.currentIndex ? 700 : 400)
+      Text('🎡').fontSize(isTablet ? 26 : 18).margin({ bottom: isTablet ? 6 : 1 })
+      Text('转盘').fontSize(isTablet ? 13 : 10).fontColor('#FFFFFF')
+        .fontWeight(isActive ? 700 : 400)
     } else if (index === 1) {
-      Text('🎫').fontSize(18).margin({ bottom: 1 })
-      Text('刮刮乐').fontSize(10).fontColor('#FFFFFF')
-        .fontWeight(index === this.currentIndex ? 700 : 400)
+      Text('🎫').fontSize(isTablet ? 26 : 18).margin({ bottom: isTablet ? 6 : 1 })
+      Text('刮刮乐').fontSize(isTablet ? 13 : 10).fontColor('#FFFFFF')
+        .fontWeight(isActive ? 700 : 400)
     } else {
-      Text('📊').fontSize(18).margin({ bottom: 1 })
-      Text('记录').fontSize(10).fontColor('#FFFFFF')
-        .fontWeight(index === this.currentIndex ? 700 : 400)
+      Text('📊').fontSize(isTablet ? 26 : 18).margin({ bottom: isTablet ? 6 : 1 })
+      Text('记录').fontSize(isTablet ? 13 : 10).fontColor('#FFFFFF')
+        .fontWeight(isActive ? 700 : 400)
     }
   }
-  .padding({ top: 6, bottom: 10 })
-  .width(72)
+  .padding(isTablet ? { top: 20, bottom: 20 } : { top: 6, bottom: 10 })
+  .width(isTablet ? '100%' : 72)
+  .backgroundColor(isTablet && isActive ? 'rgba(255,215,0,0.12)' : 'transparent')
+  .borderRadius(isTablet ? 8 : 0)
+  .border({
+    width: (isTablet && isActive) ? { left: 3 } : {},
+    color: (isTablet && isActive) ? { left: '#FFD700' } : {}
+  })
 }
 ```
-**功能**: 自定义Tab标签：Emoji图标 + 中文文字。当前选中Tab文字加粗（`fontWeight=700`），未选中普通（`fontWeight=400`）。
+**功能**: 
+- **手机模式(sm)**：底部水平Tab，图标18px、文字10px、宽度72vp，选中项字体加粗
+- **平板模式(md+)**：左侧竖向Tab侧边栏，图标26px、文字13px、宽度100%填充90vp侧边栏，选中项有金色半透明背景 + 左侧3px金色指示条 + 8px圆角
+
+### 8.7 一次开发多端部署 — 响应式布局
+
+#### 8.7.1 设计目标
+
+| 断点 | 短边宽度 | 典型设备 | 导航方式 |
+|------|---------|---------|---------|
+| sm | [320, 600)vp | 手机（竖屏+横屏） | 底部 Tab |
+| md+ | [600, +∞)vp | 平板（竖屏+横屏） | 左侧竖向 Tab 侧边栏 |
+
+手机横屏时短边仍 < 600vp，自动归入 sm 断点保持底部 Tab。
+
+#### 8.7.2 核心思路：Tabs 组件原生响应式
+
+参考 ArkUI 官方"一次开发多端部署"方案，利用 `Tabs` 组件自身的 `vertical` + `barPosition` 属性配合断点系统，**无需手写两套布局**。同一套 `TabContent` + `tabBar` Builder，仅根据断点切换 3 个属性：
+
+```
+sm 断点:
+  Tabs({ barPosition: BarPosition.End })
+  .vertical(false)      → 底部水平 Tab
+
+md+ 断点:
+  Tabs({ barPosition: BarPosition.Start })
+  .vertical(true)       → 左侧竖向 Tab（等于侧边栏）
+  .barWidth(90)         → 侧边栏宽度
+```
+
+#### 8.7.3 新增状态变量
+
+```typescript
+@State currentBreakpoint: string = 'sm';
+```
+
+#### 8.7.4 aboutToAppear — 断点检测与监听
+
+```typescript
+aboutToAppear(): void {
+  window.getLastWindow(context)
+    .then((wc) => {
+      wc.setWindowLayoutFullScreen(true);
+
+      // 获取初始窗口尺寸，计算断点
+      const wp = wc.getWindowProperties();
+      const vpW = uiContext!.px2vp(wp.windowRect.width);
+      const vpH = uiContext!.px2vp(wp.windowRect.height);
+      this.currentBreakpoint = Math.min(vpW, vpH) >= 600 ? 'md' : 'sm';
+
+      // 监听窗口尺寸变化（折叠屏展开/关闭、分屏等场景）
+      wc.on('windowSizeChange', (size: window.Size) => {
+        const w = uiContext!.px2vp(size.width);
+        const h = uiContext!.px2vp(size.height);
+        this.currentBreakpoint = Math.min(w, h) >= 600 ? 'md' : 'sm';
+      });
+    })
+    .catch((e: Error) => { Logger.error('Fullscreen error: ' + JSON.stringify(e)); });
+  this.checkDaily();
+}
+```
+
+**关键设计决策**：
+- 使用 `Math.min(width, height)`（短边）而非宽度来判断，确保手机横屏不会被误判为平板
+- 阈值 600vp 对应 ArkUI 断点系统中 sm → md 的分界线
+- `windowSizeChange` 事件保证运行时窗口变化（如分屏、折叠屏展开）时自动切换布局
+
+#### 8.7.5 Tabs 组件响应式属性
+
+```typescript
+Tabs({
+  barPosition: this.currentBreakpoint === 'sm' ? BarPosition.End : BarPosition.Start,
+  index: this.currentIndex
+}) {
+  TabContent() { WheelView() }
+    .tabBar(this.tabBuilder(0))
+  TabContent() { ScratchCardView() }
+    .tabBar(this.tabBuilder(1))
+  TabContent() { HistoryView() }
+    .tabBar(this.tabBuilder(2))
+}
+.vertical(this.currentBreakpoint !== 'sm')
+.barWidth(this.currentBreakpoint === 'sm' ? '100%' : 90)
+.barHeight(this.currentBreakpoint === 'sm' ? undefined : '100%')
+.width(StyleConstants.FULL_PERCENT)
+.height(StyleConstants.FULL_PERCENT)
+.onChange((idx: number) => { this.currentIndex = idx; })
+```
+
+**各属性断点对照表**：
+
+| 属性 | sm (手机) | md+ (平板) |
+|------|----------|-----------|
+| `barPosition` | `End` | `Start` |
+| `vertical` | `false` | `true` |
+| `barWidth` | `'100%'` | `90`vp |
+| `barHeight` | `undefined`（默认） | `'100%'` |
+
+#### 8.7.6 子组件无需改动
+
+三个 View 组件（`WheelView`、`ScratchCardView`、`HistoryView`）使用 `screenWidth * ratio` 比例自适应，在平板端自动等比例放大，无需任何修改。
+
+#### 8.7.7 范围与限制
+
+- **已实现**：手机底部Tab / 平板左侧侧边栏自适应切换
+- **不涉及**：折叠屏展开/闭合适配、多HAP工程拆分、车机/电视/手表适配、SysCap能力检测
 
 ---
 

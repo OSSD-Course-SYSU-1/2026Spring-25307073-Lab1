@@ -1,4 +1,4 @@
-import { matrix4 } from '@kit.ArkUI';
+import { matrix4, display } from '@kit.ArkUI';
 import PrizeData from '../viewmodel/PrizeData';
 import StyleConstants from '../common/constants/StyleConstants';
 import CommonConstants from '../common/constants/CommonConstants';
@@ -28,10 +28,20 @@ export default struct PrizeDialog {
   private controller?: CustomDialogController;
   @State animScale: number = 0;
   @State animOpacity: number = 0;
+  private scaleFactor: number = 1.0;
 
   aboutToAppear(): void {
     this.animScale = 0;
     this.animOpacity = 0;
+    try {
+      const d = display.getDefaultDisplaySync();
+      const uiCtx: UIContext | undefined = AppStorage.get('uiContext');
+      if (uiCtx !== undefined) {
+        const w = uiCtx.px2vp(d.width);
+        const h = uiCtx.px2vp(d.height);
+        this.scaleFactor = Math.min(w, h) / 360;
+      }
+    } catch (_e) {}
     setTimeout(() => {
       this.getUIContext()?.animateTo({
         duration: 400,
@@ -45,29 +55,25 @@ export default struct PrizeDialog {
 
   build() {
     Column() {
-      // Prize emoji (replaces Image for reliable rendering)
       Text(getPrizeEmoji(this.prizeData.imageSrc !== undefined ? this.prizeData.imageSrc : ''))
-        .fontSize(72)
-        .margin({ top: 20, bottom: 8 })
+        .fontSize(Math.min(72 * this.scaleFactor, 120))
+        .margin({ top: Math.min(20 * this.scaleFactor, 30), bottom: Math.min(8 * this.scaleFactor, 12) })
 
-      // Prize message
       Text(getPrizeMessage(this.prizeData.message))
-        .fontSize(22)
+        .fontSize(Math.min(22 * this.scaleFactor, 36))
         .fontColor('#FFD700')
         .fontWeight(700)
         .textAlign(TextAlign.Center)
-        .margin({ bottom: 8 })
+        .margin({ bottom: Math.min(8 * this.scaleFactor, 12) })
 
-      // Sparkle divider
       Text('✨ ✨ ✨')
-        .fontSize(16)
-        .margin({ bottom: 12 })
+        .fontSize(Math.min(16 * this.scaleFactor, 24))
+        .margin({ bottom: Math.min(12 * this.scaleFactor, 18) })
 
-      // Confirm button
       Text($r('app.string.text_confirm'))
         .fontColor($r('app.color.text_font_color'))
         .fontWeight(StyleConstants.FONT_WEIGHT)
-        .fontSize(18)
+        .fontSize(Math.min(18 * this.scaleFactor, 28))
         .textAlign(TextAlign.Center)
         .padding({ left: 40, right: 40, top: 10, bottom: 10 })
         .borderRadius(20)
@@ -76,12 +82,12 @@ export default struct PrizeDialog {
           this.controller?.close();
           this.enableFlag = true;
         })
-        .margin({ bottom: 16 })
+        .margin({ bottom: Math.min(16 * this.scaleFactor, 24) })
     }
     .backgroundColor('#1E1E3F')
     .borderRadius(20)
     .border({ width: 1, color: 'rgba(255,215,0,0.3)' })
-    .width(280)
+    .width(Math.min(280 * this.scaleFactor, 420))
     .scale({ x: this.animScale, y: this.animScale })
     .opacity(this.animOpacity)
   }

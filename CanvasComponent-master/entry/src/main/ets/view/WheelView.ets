@@ -27,8 +27,8 @@ export default struct WheelView {
   private settings: RenderingContextSettings = new RenderingContextSettings(true);
   private canvasContext: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
   private drawModel: DrawModel = new DrawModel();
-  @State screenWidth: number = 0;
-  @State screenHeight: number = 0;
+  @State screenWidth: number = 360;
+  @State screenHeight: number = 640;
   @State rotateDegree: number = 0;
   @State enableFlag: boolean = true;
   @State prizeData: PrizeData = new PrizeData();
@@ -46,6 +46,13 @@ export default struct WheelView {
   private overlayContext: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
   private shimmerTimer: number = -1;
   @State isSpinning: boolean = false;
+  @StorageProp('isLandscape') isLandscape: boolean = false;
+  private canvasDrawn: boolean = false;
+
+  private get scaleFactor(): number {
+    const base = Math.min(this.screenWidth, this.screenHeight);
+    return base > 0 ? base / 360 : 1.0;
+  }
 
   dialogController: CustomDialogController = new CustomDialogController({
     builder: PrizeDialog({ prizeData: $prizeData, enableFlag: $enableFlag }),
@@ -56,11 +63,30 @@ export default struct WheelView {
 
   aboutToAppear(): void {
     window.getLastWindow(context)
-      .then((windowClass: window.Window) => {
-        windowClass.setWindowLayoutFullScreen(true);
-        const wp = windowClass.getWindowProperties();
-        this.screenWidth = this.getUIContext().px2vp(wp.windowRect.width);
-        this.screenHeight = this.getUIContext().px2vp(wp.windowRect.height);
+      .then((wc) => {
+        wc.setWindowLayoutFullScreen(true);
+        const wp = wc.getWindowProperties();
+        const vpW = uiContext!.px2vp(wp.windowRect.width);
+        const vpH = uiContext!.px2vp(wp.windowRect.height);
+        const minDim = Math.min(vpW, vpH);
+        const sidebarW = minDim >= 600 ? 90 : 0;
+        this.screenWidth = vpW - sidebarW;
+        this.screenHeight = vpH;
+        if (this.canvasDrawn) {
+          this.drawModel.draw(this.canvasContext, this.screenWidth, this.screenHeight);
+        }
+
+        wc.on('windowSizeChange', (size: window.Size) => {
+          const w = uiContext!.px2vp(size.width);
+          const h = uiContext!.px2vp(size.height);
+          const md = Math.min(w, h);
+          const sw = md >= 600 ? 90 : 0;
+          this.screenWidth = w - sw;
+          this.screenHeight = h;
+          if (this.canvasDrawn) {
+            this.drawModel.draw(this.canvasContext, w - sw, h);
+          }
+        });
       })
       .catch((error: Error) => {
         Logger.error('Failed window size: ' + JSON.stringify(error));
@@ -102,12 +128,13 @@ export default struct WheelView {
   renderOverlay(): void {
     if (this.screenWidth <= 0) return;
     const ctx = this.overlayContext;
+    const base = Math.min(this.screenWidth, this.screenHeight);
     const cx: number = this.screenWidth / CommonConstants.TWO;
     const cy: number = this.screenHeight / CommonConstants.TWO;
     ctx.clearRect(0, 0, this.screenWidth, this.screenHeight);
 
     // 1. Pointer triangle (golden, fixed position)
-    const pointerRadius: number = this.screenWidth * CommonConstants.OUTER_RING_RATIOS + 10;
+    const pointerRadius: number = base * CommonConstants.OUTER_RING_RATIOS + 10;
     ctx.save();
     ctx.shadowColor = '#FFD700';
     ctx.shadowBlur = 15;
@@ -125,7 +152,7 @@ export default struct WheelView {
 
     // 2. Enhanced glow ring during spin (stroke only, no dark fill)
     if (this.isSpinning) {
-      const ringRadius: number = this.screenWidth * CommonConstants.OUTER_RING_RATIOS;
+      const ringRadius: number = base * CommonConstants.OUTER_RING_RATIOS;
       ctx.save();
       ctx.shadowColor = ColorConstants.OUTER_RING_GLOW;
       ctx.shadowBlur = 45;
@@ -139,7 +166,7 @@ export default struct WheelView {
 
     // 3. Shimmer highlight (rotating wedge)
     const now: number = Date.now();
-    const shimmerRadius: number = this.screenWidth * CommonConstants.INNER_ARC_RATIOS;
+    const shimmerRadius: number = base * CommonConstants.INNER_ARC_RATIOS;
     const shimmerOffset: number = ((now * 0.04) % CommonConstants.CIRCLE) * Math.PI / CommonConstants.HALF_CIRCLE;
     ctx.save();
     ctx.globalAlpha = 0.12;
@@ -301,6 +328,7 @@ export default struct WheelView {
         .width(StyleConstants.FULL_PERCENT)
         .height(StyleConstants.FULL_PERCENT)
         .onReady(() => {
+          this.canvasDrawn = true;
           this.drawModel.draw(this.canvasContext, this.screenWidth, this.screenHeight);
         })
         .rotate({
@@ -315,52 +343,93 @@ export default struct WheelView {
         .height(StyleConstants.FULL_PERCENT)
         .hitTestBehavior(HitTestMode.None)
 
-      Image($r('app.media.ic_center'))
-        .width(StyleConstants.CENTER_IMAGE_WIDTH)
-        .height(StyleConstants.CENTER_IMAGE_HEIGHT)
+      if (this.enableFlag && !this.showSummary) {
+        if (this.isLandscape) {
+          Column({ space: 10 }) {
+            Button('抽 1 次')
+              .fontColor('#FFFFFF').backgroundColor('rgba(255,255,255,0.15)')
+              .fontSize(14 * this.scaleFactor)
+              .width(80 * this.scaleFactor).height(36 * this.scaleFactor)
+              .onClick(() => { this.startSingle(); })
+            Button('连抽 3 次')
+              .fontColor('#FFFFFF').backgroundColor('rgba(255,215,0,0.2)')
+              .fontSize(14 * this.scaleFactor)
+              .width(80 * this.scaleFactor).height(36 * this.scaleFactor)
+              .onClick(() => { this.startMulti(3); })
+            Button('连抽 5 次')
+              .fontColor('#FFFFFF').backgroundColor('rgba(255,215,0,0.2)')
+              .fontSize(14 * this.scaleFactor)
+              .width(80 * this.scaleFactor).height(36 * this.scaleFactor)
+              .onClick(() => { this.startMulti(5); })
+          }
+          .position({
+            x: this.screenWidth / 2 + Math.min(this.screenWidth, this.screenHeight) * CommonConstants.OUTER_RING_RATIOS + 24,
+            y: this.screenHeight / 2 - 70 * this.scaleFactor
+          })
+        } else {
+          Row({ space: 20 * this.scaleFactor }) {
+            Button('抽 1 次')
+              .fontColor('#FFFFFF').backgroundColor('rgba(255,255,255,0.15)')
+              .fontSize(15 * this.scaleFactor)
+              .onClick(() => { this.startSingle(); })
+            Button('连抽 3 次')
+              .fontColor('#FFFFFF').backgroundColor('rgba(255,215,0,0.2)')
+              .fontSize(15 * this.scaleFactor)
+              .onClick(() => { this.startMulti(3); })
+            Button('连抽 5 次')
+              .fontColor('#FFFFFF').backgroundColor('rgba(255,215,0,0.2)')
+              .fontSize(15 * this.scaleFactor)
+              .onClick(() => { this.startMulti(5); })
+          }
+          .position({
+            x: 0,
+            y: this.screenHeight / 2 + Math.min(this.screenWidth, this.screenHeight) / 2 + 20 * this.scaleFactor
+          })
+          .width('100%')
+          .justifyContent(FlexAlign.Center)
+        }
+      }
+
+      // Center "GO" button — ALWAYS on top, last in Stack
+      Button('GO')
+        .fontSize(Math.min(this.screenWidth, this.screenHeight) * 0.055)
+        .fontColor('#FFD700')
+        .fontWeight(900)
+        .backgroundColor('rgba(20,20,50,0.85)')
+        .border({ width: 2, color: '#FFD700' })
+        .borderRadius(Math.min(this.screenWidth, this.screenHeight) * 0.07)
+        .width(Math.min(this.screenWidth, this.screenHeight) * 0.14)
+        .height(Math.min(this.screenWidth, this.screenHeight) * 0.14)
+        .shadow({ radius: 18, color: 'rgba(255,215,0,0.6)' })
         .scale({ x: this.btnScale, y: this.btnScale })
         .enabled(this.enableFlag)
         .onClick(() => { this.startSingle(); })
 
-      if (this.enableFlag && !this.showSummary) {
-        Row({ space: 12 }) {
-          Button('抽 1 次')
-            .fontColor('#FFFFFF').backgroundColor('rgba(255,255,255,0.15)')
-            .onClick(() => { this.startSingle(); })
-          Button('连抽 3 次')
-            .fontColor('#FFFFFF').backgroundColor('rgba(255,215,0,0.2)')
-            .onClick(() => { this.startMulti(3); })
-          Button('连抽 5 次')
-            .fontColor('#FFFFFF').backgroundColor('rgba(255,215,0,0.2)')
-            .onClick(() => { this.startMulti(5); })
-        }
-        .position({ x: 0, y: this.screenHeight - 200 })
-        .width('100%')
-        .justifyContent(FlexAlign.Center)
-      }
-
       if (this.multiMode > 0 && !this.showSummary) {
         Text(`连抽中... (${this.multiMode - this.multiRemaining}/${this.multiMode})`)
-          .fontSize(13).fontColor('rgba(255,255,255,0.5)')
-          .position({ x: 0, y: this.screenHeight - 235 })
+          .fontSize(13 * this.scaleFactor).fontColor('rgba(255,255,255,0.5)')
+          .position({
+            x: 0,
+            y: this.screenHeight / 2 + Math.min(this.screenWidth, this.screenHeight) / 2 - 30 * this.scaleFactor
+          })
           .width('100%').textAlign(TextAlign.Center)
       }
 
       if (this.showSummary) {
         Column() {
           Text(this.summaryText)
-            .fontSize(18).fontColor('#FFD700').fontWeight(700)
-            .textAlign(TextAlign.Center).lineHeight(30)
-            .margin({ bottom: 20 })
+            .fontSize(18 * this.scaleFactor).fontColor('#FFD700').fontWeight(700)
+            .textAlign(TextAlign.Center).lineHeight(30 * this.scaleFactor)
+            .margin({ bottom: 20 * this.scaleFactor })
           Button('知道了')
-            .width(160).height(40)
+            .width(160 * this.scaleFactor).height(40 * this.scaleFactor)
             .backgroundColor('#FFD700').fontColor('#1A1A2E')
-            .borderRadius(20).fontWeight(700)
+            .borderRadius(20 * this.scaleFactor).fontWeight(700)
             .onClick(() => { this.showSummary = false; })
         }
-        .padding(24)
+        .padding(24 * this.scaleFactor)
         .backgroundColor('rgba(30,30,63,0.95)')
-        .borderRadius(16)
+        .borderRadius(16 * this.scaleFactor)
         .border({ width: 1, color: 'rgba(255,215,0,0.3)' })
       }
 

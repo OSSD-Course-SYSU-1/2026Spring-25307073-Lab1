@@ -44,11 +44,14 @@ struct CanvasPage {
   }
 
   updateContentSize(fullW: number, fullH: number): void {
-    const sidebarW = this.currentBreakpoint === 'sm' ? 0 : 90;
+    const isSmallScreen: boolean = this.currentBreakpoint === 'sm';
+    const sidebarW = isSmallScreen ? 0 : 90;
+    const bottomTabH = isSmallScreen ? (fullW > fullH ? 50 : 64) : 0;
     const cw = fullW - sidebarW;
+    const ch = fullH - bottomTabH;
     AppStorage.setOrCreate('contentWidth', cw);
-    AppStorage.setOrCreate('contentHeight', fullH);
-    AppStorage.setOrCreate('isLandscape', cw > fullH);
+    AppStorage.setOrCreate('contentHeight', ch);
+    AppStorage.setOrCreate('isLandscape', cw > ch);
   }
 
   checkDaily(): void {
@@ -102,25 +105,8 @@ struct CanvasPage {
       // Star particle overlay
       StarParticle()
 
-      // Main content column (to fit Tabs + check-in badge)
+      // Main content column
       Column() {
-        // Check-in badge (top-right corner, only on first tab)
-        if (this.currentIndex === 0) {
-          Row() {
-            if (this.checkedIn) {
-              Text(`✅ 已签到 ${this.checkInDays} 天`)
-                .fontSize(11).fontColor('rgba(255,215,0,0.6)')
-            } else {
-              Text('📅 签到')
-                .fontSize(12).fontColor('#FFD700').fontWeight(600)
-                .onClick(() => { this.doCheckIn(); })
-            }
-          }
-          .width('100%')
-          .justifyContent(FlexAlign.End)
-          .padding({ right: 16, top: 8 })
-        }
-
         // Tabs
         Tabs({
           barPosition: this.currentBreakpoint === 'sm' ? BarPosition.End : BarPosition.Start,
@@ -142,6 +128,23 @@ struct CanvasPage {
       }
       .width(StyleConstants.FULL_PERCENT)
       .height(StyleConstants.FULL_PERCENT)
+
+      // Check-in badge floats above content and does not push Tabs off screen.
+      if (this.currentIndex === 0) {
+        Row() {
+          if (this.checkedIn) {
+            Text(`✅ 已签到 ${this.checkInDays} 天`)
+              .fontSize(11).fontColor('rgba(255,215,0,0.6)')
+          } else {
+            Text('📅 签到')
+              .fontSize(12).fontColor('#FFD700').fontWeight(600)
+              .onClick(() => { this.doCheckIn(); })
+          }
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.End)
+        .padding({ right: 16, top: 8 })
+      }
     }
     .width(StyleConstants.FULL_PERCENT)
     .height(StyleConstants.FULL_PERCENT)

@@ -1,12 +1,9 @@
-import Logger from '../common/utils/Logger';
 import StyleConstants from '../common/constants/StyleConstants';
 import CommonConstants from '../common/constants/CommonConstants';
 import ColorConstants from '../common/constants/ColorConstants';
 import { window } from '@kit.ArkUI';
-import { Context } from '@kit.AbilityKit';
 
 const uiContext: UIContext | undefined = AppStorage.get('uiContext');
-let context: Context = uiContext!.getHostContext()!;
 
 interface ScratchPrize {
   message: Resource;
@@ -33,8 +30,10 @@ export default struct ScratchCardView {
   @State scratchPercent: number = 0;
   @State isRevealed: boolean = false;
   @State hasNewCard: boolean = true;
-  @StorageProp('isLandscape') isLandscape: boolean = false;
-  private scaleFactor: number = 1.0;
+  @State scaleFactor: number = 1.0;
+  @StorageProp('contentWidth') contentWidth: number = 360;
+  @StorageProp('contentHeight') contentHeight: number = 640;
+  @State pageLandscape: boolean = false;
   private cardX: number = 0;
   private cardY: number = 0;
   private cardW: number = 0;
@@ -59,27 +58,57 @@ export default struct ScratchCardView {
   ];
 
   aboutToAppear(): void {
-    window.getLastWindow(context)
+    this.updateCanvasSize();
+    if (this.canvasInitialized) {
+      this.drawCard();
+    }
+    window.getLastWindow(uiContext!.getHostContext()!)
       .then((windowClass: window.Window) => {
         const wp = windowClass.getWindowProperties();
-        const vpW = this.getUIContext().px2vp(wp.windowRect.width);
-        const vpH = this.getUIContext().px2vp(wp.windowRect.height);
-        const minDim = Math.min(vpW, vpH);
-        const sidebarW = minDim >= 600 ? 90 : 0;
-        this.screenWidth = vpW - sidebarW;
-        this.screenHeight = vpH;
-        this.scaleFactor = Math.min(this.screenWidth, this.screenHeight) / 360;
+        this.updateCanvasSizeFromWindow(uiContext!.px2vp(wp.windowRect.width), uiContext!.px2vp(wp.windowRect.height));
         if (this.canvasInitialized) {
           this.drawCard();
         }
+        windowClass.on('windowSizeChange', (size: window.Size) => {
+          this.updateCanvasSizeFromWindow(uiContext!.px2vp(size.width), uiContext!.px2vp(size.height));
+          if (this.canvasInitialized) {
+            this.drawCard();
+          }
+        });
       })
-      .catch((error: Error) => {
-        Logger.error('Failed window size: ' + JSON.stringify(error));
-      });
+      .catch(() => {});
   }
 
   aboutToDisappear(): void {
     if (this.sparkleTimer > 0) clearTimeout(this.sparkleTimer);
+  }
+
+  updateCanvasSize(): void {
+    const fullW: number = this.contentWidth > 0 ? this.contentWidth : 360;
+    const fullH: number = this.contentHeight > 0 ? this.contentHeight : 640;
+    this.applyCanvasSize(fullW, fullH);
+  }
+
+  updateCanvasSizeFromWindow(fullW: number, fullH: number): void {
+    const minDim: number = Math.min(fullW, fullH);
+    const smallScreen: boolean = minDim < 600;
+    const sidebarW: number = smallScreen ? 0 : 90;
+    const bottomTabH: number = smallScreen ? (fullW > fullH ? 50 : 64) : 0;
+    this.applyCanvasSize(fullW - sidebarW, fullH - bottomTabH);
+  }
+
+  applyCanvasSize(fullW: number, fullH: number): void {
+    const minDim: number = Math.min(fullW, fullH);
+    this.pageLandscape = fullW > fullH;
+    const compactLandscape: boolean = this.pageLandscape && fullH < 480;
+
+    this.scaleFactor = Math.max(0.75, Math.min(minDim / 360, 1.35));
+    this.screenWidth = fullW;
+
+    const titleArea: number = compactLandscape ? 48 * this.scaleFactor : 86 * this.scaleFactor;
+    const bottomArea: number = compactLandscape ? 24 * this.scaleFactor : 40 * this.scaleFactor;
+    const safePadding: number = compactLandscape ? 8 * this.scaleFactor : 14 * this.scaleFactor;
+    this.screenHeight = Math.max(160, fullH - titleArea - bottomArea - safePadding);
   }
 
   initCard(): void {
@@ -99,15 +128,17 @@ export default struct ScratchCardView {
 
   drawCard(): void {
     const ctx = this.canvasContext;
-    const base = Math.min(this.screenWidth, this.screenHeight);
     let cw: number;
     let ch: number;
-    if (this.isLandscape) {
-      ch = Math.min(base * 0.6, 320);
-      cw = Math.min(ch * 1.6, this.screenWidth * 0.85);
+    if (this.compactLandscape) {
+      ch = Math.min(this.screenHeight * 0.76, 220);
+      cw = Math.min(ch * 2.05, this.screenWidth * 0.78);
+    } else if (this.pageLandscape) {
+      ch = Math.min(this.screenHeight * 0.72, 320);
+      cw = Math.min(ch * 1.7, this.screenWidth * 0.82);
     } else {
-      cw = Math.min(base * 0.75, 420);
-      ch = Math.min(cw * 1.2, this.screenHeight * 0.7);
+      cw = Math.min(this.screenWidth * 0.78, 420);
+      ch = Math.min(cw * 1.18, this.screenHeight * 0.82);
     }
     this.cardX = (this.screenWidth - cw) / 2;
     this.cardY = (this.screenHeight - ch) / 2;
@@ -348,28 +379,38 @@ export default struct ScratchCardView {
     this.sparkleTimer = setTimeout(animate, 16);
   }
 
+  private get compactLandscape(): boolean {
+    return this.pageLandscape && this.screenHeight < 360;
+  }
+
   build() {
     Column() {
       // Title
       Text('🎫 刮刮乐')
-        .fontSize(24 * this.scaleFactor)
+        .fontSize((this.compactLandscape ? 18 : 24) * this.scaleFactor)
         .fontColor('#FFFFFF')
         .fontWeight(700)
-        .margin({ top: 12 * this.scaleFactor, bottom: 8 * this.scaleFactor })
+        .margin({
+          top: (this.compactLandscape ? 6 : 12) * this.scaleFactor,
+          bottom: (this.compactLandscape ? 4 : 8) * this.scaleFactor
+        })
 
-      Text(this.isRevealed ? '恭喜中奖！' : '手指刮开涂层看看手气')
-        .fontSize(14 * this.scaleFactor)
-        .fontColor('rgba(255,255,255,0.5)')
-        .margin({ bottom: 16 * this.scaleFactor })
+      if (!this.compactLandscape) {
+        Text(this.isRevealed ? '恭喜中奖！' : '手指刮开涂层看看手气')
+          .fontSize(14 * this.scaleFactor)
+          .fontColor('rgba(255,255,255,0.5)')
+          .margin({ bottom: 16 * this.scaleFactor })
+      }
 
       // Card Canvas + Sparkles overlay
       Stack()
-        .layoutWeight(1)
-        .width('100%') {
+        .width(this.screenWidth)
+        .height(this.screenHeight) {
         Canvas(this.canvasContext)
-          .width('100%')
-          .height('100%')
+          .width(this.screenWidth)
+          .height(this.screenHeight)
           .onReady(() => {
+            this.updateCanvasSize();
             if (!this.canvasInitialized) {
               this.canvasInitialized = true;
               this.initCard();
@@ -383,8 +424,8 @@ export default struct ScratchCardView {
 
         // Sparkle particle overlay
         Canvas(this.sparkleContext)
-          .width('100%')
-          .height('100%')
+          .width(this.screenWidth)
+          .height(this.screenHeight)
           .hitTestBehavior(HitTestMode.None)
       }
 
@@ -433,7 +474,7 @@ export default struct ScratchCardView {
         Text(`已刮 ${this.scratchPercent}%`)
           .fontSize(13 * this.scaleFactor)
           .fontColor('rgba(255,255,255,0.3)')
-          .margin({ bottom: 16 * this.scaleFactor })
+          .margin({ bottom: (this.compactLandscape ? 4 : 16) * this.scaleFactor })
       }
     }
     .width(StyleConstants.FULL_PERCENT)

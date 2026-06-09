@@ -46,7 +46,9 @@ export default struct WheelView {
   private overlayContext: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
   private shimmerTimer: number = -1;
   @State isSpinning: boolean = false;
-  @StorageProp('isLandscape') isLandscape: boolean = false;
+  @StorageProp('contentWidth') contentWidth: number = 360;
+  @StorageProp('contentHeight') contentHeight: number = 640;
+  @State pageLandscape: boolean = false;
   private canvasDrawn: boolean = false;
 
   private get scaleFactor(): number {
@@ -61,30 +63,41 @@ export default struct WheelView {
     cancel: () => { this.enableFlag = true; }
   });
 
+  updateWheelSize(): void {
+    const w: number = this.contentWidth > 0 ? this.contentWidth : 360;
+    const h: number = this.contentHeight > 0 ? this.contentHeight : 640;
+    this.pageLandscape = w > h;
+    this.screenWidth = w;
+    this.screenHeight = Math.max(this.pageLandscape ? 220 : 320, h);
+  }
+
+  updateWheelSizeFromWindow(fullW: number, fullH: number): void {
+    const minDim: number = Math.min(fullW, fullH);
+    const smallScreen: boolean = minDim < 600;
+    const sidebarW: number = smallScreen ? 0 : 90;
+    const bottomTabH: number = smallScreen ? (fullW > fullH ? 50 : 64) : 0;
+    const w: number = fullW - sidebarW;
+    const h: number = fullH - bottomTabH;
+    this.pageLandscape = w > h;
+    this.screenWidth = w;
+    this.screenHeight = Math.max(this.pageLandscape ? 220 : 320, h);
+  }
+
   aboutToAppear(): void {
+    this.updateWheelSize();
     window.getLastWindow(context)
       .then((wc) => {
         wc.setWindowLayoutFullScreen(true);
         const wp = wc.getWindowProperties();
-        const vpW = uiContext!.px2vp(wp.windowRect.width);
-        const vpH = uiContext!.px2vp(wp.windowRect.height);
-        const minDim = Math.min(vpW, vpH);
-        const sidebarW = minDim >= 600 ? 90 : 0;
-        this.screenWidth = vpW - sidebarW;
-        this.screenHeight = vpH;
+        this.updateWheelSizeFromWindow(uiContext!.px2vp(wp.windowRect.width), uiContext!.px2vp(wp.windowRect.height));
         if (this.canvasDrawn) {
           this.drawModel.draw(this.canvasContext, this.screenWidth, this.screenHeight);
         }
 
         wc.on('windowSizeChange', (size: window.Size) => {
-          const w = uiContext!.px2vp(size.width);
-          const h = uiContext!.px2vp(size.height);
-          const md = Math.min(w, h);
-          const sw = md >= 600 ? 90 : 0;
-          this.screenWidth = w - sw;
-          this.screenHeight = h;
+          this.updateWheelSizeFromWindow(uiContext!.px2vp(size.width), uiContext!.px2vp(size.height));
           if (this.canvasDrawn) {
-            this.drawModel.draw(this.canvasContext, w - sw, h);
+            this.drawModel.draw(this.canvasContext, this.screenWidth, this.screenHeight);
           }
         });
       })
@@ -325,8 +338,8 @@ export default struct WheelView {
   build() {
     Stack({ alignContent: Alignment.Center }) {
       Canvas(this.canvasContext)
-        .width(StyleConstants.FULL_PERCENT)
-        .height(StyleConstants.FULL_PERCENT)
+        .width(this.screenWidth)
+        .height(this.screenHeight)
         .onReady(() => {
           this.canvasDrawn = true;
           this.drawModel.draw(this.canvasContext, this.screenWidth, this.screenHeight);
@@ -339,12 +352,12 @@ export default struct WheelView {
 
       // Overlay Canvas for fixed pointer + shimmer + glow
       Canvas(this.overlayContext)
-        .width(StyleConstants.FULL_PERCENT)
-        .height(StyleConstants.FULL_PERCENT)
+        .width(this.screenWidth)
+        .height(this.screenHeight)
         .hitTestBehavior(HitTestMode.None)
 
       if (this.enableFlag && !this.showSummary) {
-        if (this.isLandscape) {
+        if (this.pageLandscape) {
           Column({ space: 10 }) {
             Button('抽 1 次')
               .fontColor('#FFFFFF').backgroundColor('rgba(255,255,255,0.15)')
@@ -440,8 +453,8 @@ export default struct WheelView {
           .hitTestBehavior(HitTestMode.None)
       }
     }
-    .width(StyleConstants.FULL_PERCENT)
-    .height(StyleConstants.FULL_PERCENT)
+    .width(this.screenWidth)
+    .height(this.screenHeight)
     .clip(false)
   }
 }

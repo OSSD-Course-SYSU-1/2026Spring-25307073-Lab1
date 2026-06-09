@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(./hvigorw build *)",
-      "Bash(hvigor build *)"
-    ]
-  }
-}

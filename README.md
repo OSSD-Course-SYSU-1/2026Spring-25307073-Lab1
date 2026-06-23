@@ -1,247 +1,4376 @@
-# Canvas 抽奖应用项目说明
+# Canvas 抽奖应用项目完整文档合集
 
-本文档由 `README1.md`、`README2.md`、`README3.md`、`README4.md` 汇总整理而来，用于集中介绍项目功能、代码结构、多端适配方案和自由流转实现。
+本文档完整整合 `README1.md`、`README2.md`、`README3.md`、`README4.md` 的全部内容，包含初始 Canvas 抽奖转盘、新增刮刮乐与记录功能、多端适配 / 多端部署方案，以及自由流转 / 应用接续实现。
 
-## 一、项目概述
+## 总目录
 
-本项目是一个基于 HarmonyOS 的 Canvas 抽奖应用，使用 ArkTS 和 ArkUI 声明式开发完成。应用以 Canvas 绘图为核心，实现转盘抽奖、刮刮乐、抽奖记录、签到、粒子背景、中奖弹窗等功能，并进一步支持手机/平板、横屏/竖屏多端适配，以及第一版自由流转能力。
+1. [第一部分：初始 Canvas 抽奖转盘项目完整解析（README1）](#第一部分初始-canvas-抽奖转盘项目完整解析readme1)
+2. [第二部分：新增功能完整解析（README2）](#第二部分新增功能完整解析readme2)
+3. [第三部分：多端适配 / 多端部署实现说明（README3）](#第三部分多端适配--多端部署实现说明readme3)
+4. [第四部分：自由流转功能实现说明（README4）](#第四部分自由流转功能实现说明readme4)
 
-项目主工程目录：
+---
 
-```txt
-CanvasComponent-master/
+## 第一部分：初始 Canvas 抽奖转盘项目完整解析（README1）
+
+> 来源文件：`README1.md`
+
+# Canvas抽奖转盘项目 - 完整代码功能解析文档
+
+## 目录
+1. [项目概述](#项目概述)
+2. [项目架构](#项目架构)
+3. [核心模块详解](#核心模块详解)
+4. [数据模型详解](#数据模型详解)
+5. [工具类详解](#工具类详解)
+6. [常量配置详解](#常量配置详解)
+7. [资源文件详解](#资源文件详解)
+8. [功能流程分析](#功能流程分析)
+
+---
+
+## 项目概述
+
+### 项目名称
+基于Canvas实现抽奖转盘功能
+
+### 项目简介
+本项目是一个基于HarmonyOS平台开发的抽奖转盘应用，使用Canvas画布组件实现自定义绘制抽奖转盘，支持点击抽奖、转盘旋转动画、中奖结果展示等完整功能。
+
+### 技术栈
+- **开发平台**: HarmonyOS 5.0.5 Release及以上
+- **开发语言**: ArkTS (TypeScript扩展)
+- **UI框架**: ArkUI声明式开发范式
+- **核心组件**: Canvas画布组件
+- **动画**: 显式动画animateTo
+- **国际化**: 支持中英文切换
+
+---
+
+## 项目架构
+
+### 目录结构
+```
+entry/src/main/ets/
+├── common/                    # 公共模块
+│   ├── constants/            # 常量定义
+│   │   ├── ColorConstants.ets      # 颜色常量
+│   │   ├── CommonConstants.ets     # 通用常量
+│   │   └── StyleConstants.ets      # 样式常量
+│   └── utils/                # 工具类
+│       ├── CheckEmptyUtils.ets     # 空值检查工具
+│       └── Logger.ets              # 日志工具
+├── entryability/             # 应用入口
+│   └── EntryAbility.ts             # Ability生命周期
+├── pages/                    # 页面
+│   └── CanvasPage.ets              # 主页面
+├── view/                     # 视图组件
+│   └── PrizeDialog.ets             # 中奖弹窗
+└── viewmodel/                # 数据模型
+    ├── DrawModel.ets               # 绘图逻辑
+    ├── FillArcData.ets             # 圆弧数据
+    └── PrizeData.ets               # 奖品数据
 ```
 
-核心技术栈：
+### 架构设计模式
+项目采用MVVM架构模式：
+- **Model**: PrizeData、FillArcData数据模型
+- **View**: CanvasPage页面、PrizeDialog弹窗
+- **ViewModel**: DrawModel绘图逻辑处理
 
-| 类型 | 内容 |
-| --- | --- |
-| 开发平台 | HarmonyOS |
-| 开发语言 | ArkTS |
-| UI 框架 | ArkUI 声明式开发 |
-| 核心绘图 | Canvas 2D |
-| 构建体系 | Hvigor / OHOS 工程 |
-| 设备类型 | phone、tablet |
-| 适配方向 | 手机、平板、横屏、竖屏 |
-| 流转能力 | 跨端迁移 / 应用接续 |
+---
 
-## 二、项目结构
+## 核心模块详解
 
-主要目录如下：
+### 1. EntryAbility.ts - 应用入口类
 
-```txt
-CanvasComponent-master/
-├── AppScope/
-│   └── app.json5
-├── entry/
-│   ├── src/main/module.json5
-│   ├── src/main/ets/entryability/EntryAbility.ts
-│   ├── src/main/ets/pages/CanvasPage.ets
-│   ├── src/main/ets/view/
-│   │   ├── WheelView.ets
-│   │   ├── ScratchCardView.ets
-│   │   ├── HistoryView.ets
-│   │   ├── PrizeDialog.ets
-│   │   ├── ConfettiEffect.ets
-│   │   ├── StarParticle.ets
-│   │   └── SlotMachineView.ets
-│   ├── src/main/ets/viewmodel/
-│   │   ├── DrawModel.ets
-│   │   ├── PrizeData.ets
-│   │   └── FillArcData.ets
-│   └── src/main/resources/
-├── build-profile.json5
-├── oh-package.json5
-└── hvigorfile.ts
+**文件路径**: `entry/src/main/ets/entryability/EntryAbility.ts`
+
+#### 功能说明
+EntryAbility是应用的入口类，继承自UIAbility，负责应用的生命周期管理和窗口初始化。
+
+#### 代码详解
+
+##### 1.1 onCreate生命周期
+```typescript
+onCreate(want, launchParam) {
+  hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onCreate');
+}
+```
+**功能**: 应用创建时调用
+**实现方式**: 
+- 使用hilog记录应用创建日志
+- 参数want包含启动信息，launchParam包含启动参数
+
+##### 1.2 onWindowStageCreate生命周期
+```typescript
+onWindowStageCreate(windowStage: window.WindowStage) {
+  hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
+  
+  windowStage.loadContent('pages/CanvasPage', (err, data) => {
+    if (err.code) {
+      hilog.error(0x0000, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err) ?? '');
+      return;
+    }
+    hilog.info(0x0000, 'testTag', 'Succeeded in loading the content. Data: %{public}s', JSON.stringify(data) ?? '');
+    AppStorage.setOrCreate('uiContext', windowStage.getMainWindowSync().getUIContext());
+  });
+}
+```
+**功能**: 窗口阶段创建时加载主页面
+**实现步骤**:
+1. 记录窗口创建日志
+2. 调用windowStage.loadContent加载CanvasPage页面
+3. 错误处理：如果加载失败，记录错误日志并返回
+4. 成功处理：记录成功日志
+5. **关键操作**: 将UIContext存储到AppStorage中，供全局使用
+   - `windowStage.getMainWindowSync()` 获取主窗口
+   - `getUIContext()` 获取UI上下文
+   - `AppStorage.setOrCreate()` 存储到应用全局存储
+
+##### 1.3 其他生命周期方法
+- **onDestroy**: 应用销毁时调用
+- **onWindowStageDestroy**: 窗口阶段销毁时调用
+- **onForeground**: 应用进入前台时调用
+- **onBackground**: 应用进入后台时调用
+
+---
+
+### 2. CanvasPage.ets - 主页面
+
+**文件路径**: `entry/src/main/ets/pages/CanvasPage.ets`
+
+#### 功能说明
+CanvasPage是应用的主页面，负责展示抽奖转盘、处理用户交互、控制转盘旋转动画、显示中奖结果。
+
+#### 代码详解
+
+##### 2.1 全局上下文获取
+```typescript
+const uiContext: UIContext | undefined = AppStorage.get('uiContext');
+let context: Context = uiContext!.getHostContext()!;
+```
+**功能**: 获取全局UI上下文和应用上下文
+**实现方式**: 
+- 从AppStorage获取之前存储的uiContext
+- 通过getHostContext()获取宿主上下文，用于访问资源管理器等系统服务
+
+##### 2.2 组件状态定义
+```typescript
+@Entry
+@Component
+struct CanvasPage {
+  private settings: RenderingContextSettings = new RenderingContextSettings(true);
+  private canvasContext: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
+  @State drawModel: DrawModel = new DrawModel();
+  @State screenWidth: number = 0;
+  @State screenHeight: number = 0;
+  @State rotateDegree: number = 0;
+  @State enableFlag: boolean = true;
+  @State prizeData: PrizeData = new PrizeData();
+  // ...
+}
+```
+**状态变量说明**:
+- **settings**: 渲染上下文设置，参数true表示开启抗锯齿
+- **canvasContext**: Canvas 2D渲染上下文，用于绑定Canvas组件并执行绘图操作
+- **drawModel**: 绘图模型实例，封装所有绘图逻辑
+- **screenWidth/screenHeight**: 屏幕宽高，用于自适应布局
+- **rotateDegree**: 转盘旋转角度，用于动画控制
+- **enableFlag**: 启用标志，控制按钮是否可点击，防止重复抽奖
+- **prizeData**: 中奖数据，存储中奖信息
+
+##### 2.3 自定义弹窗控制器
+```typescript
+dialogController: CustomDialogController = new CustomDialogController({
+  builder: PrizeDialog({
+    prizeData: $prizeData,
+    enableFlag: $enableFlag
+  }),
+  autoCancel: false,
+  alignment: DialogAlignment.Center,
+  cancel: () => {
+    this.enableFlag = !this.enableFlag;
+  }
+});
+```
+**功能**: 创建中奖弹窗控制器
+**参数说明**:
+- **builder**: 弹窗构建器，使用PrizeDialog组件
+- **prizeData/enableFlag**: 使用$语法进行双向绑定
+- **autoCancel**: false表示点击遮罩不关闭弹窗
+- **alignment**: 弹窗居中显示
+- **cancel**: 取消回调，切换enableFlag状态
+
+##### 2.4 语言切换监听
+```typescript
+private currentLang: string = 'zh-Hans';
+private lastLang: string = 'zh-Hans';
+private subscriber: commonEventManager.CommonEventSubscriber | null = null;
+
+aboutToAppear() {
+  // ... 窗口尺寸获取代码 ...
+  
+  let subscribeInfo: commonEventManager.CommonEventSubscribeInfo = {
+    events: [commonEventManager.Support.COMMON_EVENT_LOCALE_CHANGED]
+  };
+  commonEventManager.createSubscriber(subscribeInfo)
+    .then((commonEventSubscriber: commonEventManager.CommonEventSubscriber) => {
+      this.subscriber = commonEventSubscriber;
+      commonEventManager.subscribe(this.subscriber, (err) => {
+        if (err) {
+          Logger.error(`Failed to subscribe common event. errorCode=${err.code}, errorMessage=${err.message}`);
+          return;
+        }
+        this.currentLang = i18n.System.getSystemLanguage();
+      });
+    })
+    .catch((err: BusinessError) => {
+      Logger.error(`CreateSubscriber failed, errorCode=${err.code}, errorMessage=${err.message}}`);
+    })
+}
+```
+**功能**: 监听系统语言切换事件，实现国际化
+**实现步骤**:
+1. 创建订阅信息，订阅语言变更事件COMMON_EVENT_LOCALE_CHANGED
+2. 创建订阅者subscriber
+3. 订阅事件，当语言变更时更新currentLang
+4. 错误处理：记录订阅失败日志
+
+##### 2.5 窗口尺寸获取
+```typescript
+aboutToAppear() {
+  window.getLastWindow(context)
+    .then((windowClass: window.Window) => {
+      windowClass.setWindowLayoutFullScreen(true);
+      let windowProperties = windowClass.getWindowProperties();
+      this.screenWidth = this.getUIContext().px2vp(windowProperties.windowRect.width);
+      this.screenHeight = this.getUIContext().px2vp(windowProperties.windowRect.height);
+    })
+    .catch((error: Error) => {
+      Logger.error('Failed to obtain the window size. Cause: ' + JSON.stringify(error));
+    })
+}
+```
+**功能**: 获取屏幕尺寸并设置全屏显示
+**实现步骤**:
+1. 获取最后一个窗口实例
+2. 设置窗口全屏显示setWindowLayoutFullScreen(true)
+3. 获取窗口属性
+4. 将像素值转换为vp单位（px2vp）
+5. 存储屏幕宽高到状态变量
+
+##### 2.6 页面显示与隐藏
+```typescript
+onPageShow(): void {
+  if (this.lastLang != this.currentLang) {
+    this.drawModel.draw(this.canvasContext, this.screenWidth, this.screenHeight);
+  }
+}
+
+onPageHide(): void {
+  this.lastLang = i18n.System.getSystemLanguage();
+}
+```
+**功能**: 处理页面显示隐藏时的语言切换
+**实现逻辑**:
+- onPageShow: 如果语言发生变化，重新绘制转盘（更新文本）
+- onPageHide: 记录当前语言，用于下次比较
+
+##### 2.7 组件销毁
+```typescript
+aboutToDisappear(): void {
+  if (this.subscriber) {
+    commonEventManager.unsubscribe(this.subscriber, (err: BusinessError) => {
+      if (!err) {
+        this.subscriber = null;
+      }
+    })
+  }
+}
+```
+**功能**: 组件销毁时取消事件订阅，防止内存泄漏
+
+##### 2.8 UI构建
+```typescript
+build() {
+  Stack({ alignContent: Alignment.Center }) {
+    Canvas(this.canvasContext)
+      .width(StyleConstants.FULL_PERCENT)
+      .height(StyleConstants.FULL_PERCENT)
+      .onReady(() => {
+        this.drawModel.draw(this.canvasContext, this.screenWidth, this.screenHeight);
+      })
+      .rotate({
+        x: 0,
+        y: 0,
+        z: 1,
+        angle: this.rotateDegree,
+        centerX: this.screenWidth / CommonConstants.TWO,
+        centerY: this.screenHeight / CommonConstants.TWO
+      })
+
+    Image($r('app.media.ic_center'))
+      .width(StyleConstants.CENTER_IMAGE_WIDTH)
+      .height(StyleConstants.CENTER_IMAGE_HEIGHT)
+      .enabled(this.enableFlag)
+      .onClick(() => {
+        this.enableFlag = !this.enableFlag;
+        this.startAnimator();
+      })
+  }
+  .width(StyleConstants.FULL_PERCENT)
+  .height(StyleConstants.FULL_PERCENT)
+  .backgroundImage($r('app.media.ic_background'), ImageRepeat.NoRepeat)
+  .backgroundImageSize({
+    width: StyleConstants.FULL_PERCENT,
+    height: StyleConstants.BACKGROUND_IMAGE_SIZE
+  })
+}
+```
+**UI结构说明**:
+1. **Stack容器**: 堆叠布局，子组件居中对齐
+2. **Canvas组件**: 
+   - 绑定canvasContext渲染上下文
+   - 设置宽高为100%
+   - onReady回调：Canvas准备就绪时绘制转盘
+   - rotate属性：根据rotateDegree旋转转盘
+3. **中心图片**: 
+   - 显示"开始"按钮图片
+   - enabled绑定enableFlag，控制是否可点击
+   - onClick：点击时禁用按钮并启动动画
+4. **Stack背景**: 设置背景图片
+
+##### 2.9 启动动画
+```typescript
+startAnimator() {
+  let randomAngle = Math.round(Math.random() * CommonConstants.CIRCLE);
+  this.prizeData = this.drawModel.showPrizeData(randomAngle);
+
+  this.getUIContext().animateTo({
+    duration: CommonConstants.DURATION,
+    curve: Curve.Ease,
+    delay: 0,
+    iterations: 1,
+    playMode: PlayMode.Normal,
+    onFinish: () => {
+      this.rotateDegree = CommonConstants.ANGLE - randomAngle;
+      this.dialogController.open();
+    }
+  }, () => {
+    this.rotateDegree = CommonConstants.CIRCLE * CommonConstants.FIVE +
+    CommonConstants.ANGLE - randomAngle;
+  })
+}
+```
+**功能**: 启动转盘旋转动画
+**实现步骤**:
+1. **生成随机角度**: Math.random() * 360，决定中奖结果
+2. **获取中奖数据**: 调用drawModel.showPrizeData()根据角度获取奖品信息
+3. **启动显式动画**:
+   - duration: 4000ms动画时长
+   - curve: Ease缓动曲线
+   - iterations: 1次播放
+   - playMode: Normal正常播放
+   - onFinish: 动画结束回调
+4. **动画闭包**: 
+   - 计算旋转角度：5圈(1800度) + 270度 - 随机角度
+   - 实现转盘旋转5圈后停在指定位置
+5. **动画结束**:
+   - 设置最终角度
+   - 打开中奖弹窗
+
+---
+
+### 3. DrawModel.ets - 绘图逻辑类
+
+**文件路径**: `entry/src/main/ets/viewmodel/DrawModel.ets`
+
+#### 功能说明
+DrawModel是核心绘图类，封装了所有Canvas绑定的绘图逻辑，负责绘制转盘的各个组成部分。
+
+#### 代码详解
+
+##### 3.1 类属性定义
+```typescript
+export default class DrawModel {
+  private startAngle: number = 0;
+  private avgAngle: number = CommonConstants.CIRCLE / CommonConstants.COUNT;
+  private screenWidth: number = 0;
+  private canvasContext?: CanvasRenderingContext2D;
+}
+```
+**属性说明**:
+- **startAngle**: 起始角度，用于绘制扇形
+- **avgAngle**: 平均角度，360度/6个扇区 = 60度
+- **screenWidth**: 屏幕宽度，用于计算比例
+- **canvasContext**: Canvas渲染上下文
+
+##### 3.2 主绘制方法
+```typescript
+draw(canvasContext: CanvasRenderingContext2D, screenWidth: number, screenHeight: number) {
+  if (CheckEmptyUtils.isEmptyObj(canvasContext)) {
+    Logger.error('[DrawModel][draw] canvasContext is empty.');
+    return;
+  }
+  this.canvasContext = canvasContext;
+  this.screenWidth = screenWidth;
+  
+  // 清空画布
+  this.canvasContext.clearRect(0, 0, this.screenWidth, screenHeight);
+  
+  // 平移坐标系到中心
+  this.canvasContext.translate(this.screenWidth / CommonConstants.TWO,
+    screenHeight / CommonConstants.TWO);
+  
+  // 绘制各部分
+  this.drawFlower();        // 绘制外圈花瓣
+  this.drawOutCircle();     // 绘制外圈和小圆点
+  this.drawInnerCircle();   // 绘制内圈
+  this.drawInnerArc();      // 绘制扇形抽奖区
+  this.drawArcText();       // 绘制扇形文字
+  this.drawImage();         // 绘制奖品图片
+  
+  // 恢复坐标系
+  this.canvasContext.translate(-this.screenWidth / CommonConstants.TWO,
+    -screenHeight / CommonConstants.TWO);
+}
+```
+**绘制流程**:
+1. **参数校验**: 检查canvasContext是否为空
+2. **清空画布**: clearRect清除之前的内容
+3. **坐标系变换**: translate将原点移到屏幕中心，便于绘制
+4. **分层绘制**: 按照从外到内的顺序绘制各层
+5. **恢复坐标系**: 平移回原点
+
+##### 3.3 绘制圆弧方法
+```typescript
+fillArc(fillArcData: FillArcData, fillColor: string) {
+  if (CheckEmptyUtils.isEmptyObj(fillArcData) || CheckEmptyUtils.isEmptyStr(fillColor)) {
+    Logger.error('[DrawModel][fillArc] fillArcData or fillColor is empty.');
+    return;
+  }
+  if (this.canvasContext !== undefined) {
+    this.canvasContext.beginPath();
+    this.canvasContext.fillStyle = fillColor;
+    this.canvasContext.arc(fillArcData.x, fillArcData.y, fillArcData.radius,
+      fillArcData.startAngle, fillArcData.endAngle);
+    this.canvasContext.fill();
+  }
+}
+```
+**功能**: 绘制填充圆弧
+**实现步骤**:
+1. 参数校验
+2. beginPath开始新路径
+3. 设置填充颜色
+4. arc绘制圆弧
+5. fill填充
+
+##### 3.4 绘制外圈花瓣
+```typescript
+drawFlower() {
+  let beginAngle = this.startAngle + this.avgAngle;
+  const pointY = this.screenWidth * CommonConstants.FLOWER_POINT_Y_RATIOS;
+  const radius = this.screenWidth * CommonConstants.FLOWER_RADIUS_RATIOS;
+  const innerRadius = this.screenWidth * CommonConstants.FLOWER_INNER_RATIOS;
+  
+  for (let i = 0; i < CommonConstants.COUNT; i++) {
+    this.canvasContext?.save();
+    this.canvasContext?.rotate(beginAngle * Math.PI / CommonConstants.HALF_CIRCLE);
+    
+    // 绘制外花瓣
+    this.fillArc(new FillArcData(0, -pointY, radius, 0, Math.PI * CommonConstants.TWO),
+      ColorConstants.FLOWER_OUT_COLOR);
+    
+    // 绘制内花瓣
+    this.fillArc(new FillArcData(0, -pointY, innerRadius, 0, Math.PI * CommonConstants.TWO),
+      ColorConstants.FLOWER_INNER_COLOR);
+    
+    beginAngle += this.avgAngle;
+    this.canvasContext?.restore();
+  }
+}
+```
+**功能**: 绘制转盘外圈的装饰花瓣
+**实现步骤**:
+1. 计算花瓣位置参数（基于屏幕宽度的比例）
+2. 循环6次，每次绘制一个花瓣
+3. save保存当前状态
+4. rotate旋转坐标系到指定角度
+5. 绘制外层花瓣（橙色）
+6. 绘制内层花瓣（黄色）
+7. restore恢复状态
+
+##### 3.5 绘制外圈和小圆点
+```typescript
+drawOutCircle() {
+  // 绘制外圈
+  this.fillArc(new FillArcData(0, 0, this.screenWidth * CommonConstants.OUT_CIRCLE_RATIOS, 0,
+    Math.PI * CommonConstants.TWO), ColorConstants.OUT_CIRCLE_COLOR);
+
+  let beginAngle = this.startAngle;
+  // 绘制小圆点
+  for (let i = 0; i < CommonConstants.SMALL_CIRCLE_COUNT; i++) {
+    this.canvasContext?.save();
+    this.canvasContext?.rotate(beginAngle * Math.PI / CommonConstants.HALF_CIRCLE);
+    this.fillArc(new FillArcData(this.screenWidth * CommonConstants.SMALL_CIRCLE_RATIOS, 0,
+      CommonConstants.SMALL_CIRCLE_RADIUS, 0, Math.PI * CommonConstants.TWO),
+      ColorConstants.WHITE_COLOR);
+    beginAngle = beginAngle + CommonConstants.CIRCLE / CommonConstants.SMALL_CIRCLE_COUNT;
+    this.canvasContext?.restore();
+  }
+}
+```
+**功能**: 绘制转盘外圈和装饰小圆点
+**实现步骤**:
+1. 绘制外圈大圆（黄色）
+2. 循环8次，绘制8个小圆点
+3. 每个小圆点间隔45度（360/8）
+4. 小圆点为白色，半径4.1
+
+##### 3.6 绘制内圈
+```typescript
+drawInnerCircle() {
+  // 绘制内圈底色
+  this.fillArc(new FillArcData(0, 0, this.screenWidth * CommonConstants.INNER_CIRCLE_RATIOS, 0,
+    Math.PI * CommonConstants.TWO), ColorConstants.INNER_CIRCLE_COLOR);
+  
+  // 绘制内圈白色
+  this.fillArc(new FillArcData(0, 0, this.screenWidth * CommonConstants.INNER_WHITE_CIRCLE_RATIOS, 0,
+    Math.PI * CommonConstants.TWO), ColorConstants.WHITE_COLOR);
+}
+```
+**功能**: 绘制转盘内圈（中心圆盘）
+
+##### 3.7 绘制扇形抽奖区
+```typescript
+drawInnerArc() {
+  let colors = [
+    ColorConstants.ARC_PINK_COLOR, ColorConstants.ARC_YELLOW_COLOR,
+    ColorConstants.ARC_GREEN_COLOR, ColorConstants.ARC_PINK_COLOR,
+    ColorConstants.ARC_YELLOW_COLOR, ColorConstants.ARC_GREEN_COLOR
+  ];
+  let radius = this.screenWidth * CommonConstants.INNER_ARC_RATIOS;
+  
+  for (let i = 0; i < CommonConstants.COUNT; i++) {
+    this.fillArc(new FillArcData(0, 0, radius, 
+      this.startAngle * Math.PI / CommonConstants.HALF_CIRCLE,
+      (this.startAngle + this.avgAngle) * Math.PI / CommonConstants.HALF_CIRCLE), 
+      colors[i]);
+    this.canvasContext?.lineTo(0, 0);
+    this.canvasContext?.fill();
+    this.startAngle += this.avgAngle;
+  }
+}
+```
+**功能**: 绘制6个扇形抽奖区域
+**实现步骤**:
+1. 定义颜色数组（粉、黄、绿交替）
+2. 循环6次，每次绘制一个扇形
+3. 使用fillArc绘制扇形
+4. lineTo(0,0)连接到中心点，形成扇形
+5. fill填充
+
+##### 3.8 绘制扇形文字
+```typescript
+drawArcText() {
+  if (this.canvasContext !== undefined) {
+    this.canvasContext.textAlign = CommonConstants.TEXT_ALIGN;
+    this.canvasContext.textBaseline = CommonConstants.TEXT_BASE_LINE;
+    this.canvasContext.fillStyle = ColorConstants.TEXT_COLOR;
+    this.canvasContext.font = StyleConstants.ARC_TEXT_SIZE + CommonConstants.CANVAS_FONT;
+  }
+  
+  let textArrays = [
+    $r('app.string.text_smile'),
+    $r('app.string.text_hamburger'),
+    $r('app.string.text_cake'),
+    $r('app.string.text_smile'),
+    $r('app.string.text_hamburger'),
+    $r('app.string.text_watermelon')
+  ];
+  
+  let arcTextStartAngle = CommonConstants.ARC_START_ANGLE;
+  let arcTextEndAngle = CommonConstants.ARC_END_ANGLE;
+  
+  for (let i = 0; i < CommonConstants.COUNT; i++) {
+    this.drawCircularText(this.getResourceString(textArrays[i]),
+      (this.startAngle + arcTextStartAngle) * Math.PI / CommonConstants.HALF_CIRCLE,
+      (this.startAngle + arcTextEndAngle) * Math.PI / CommonConstants.HALF_CIRCLE);
+    this.startAngle += this.avgAngle;
+  }
+}
+```
+**功能**: 在扇形区域绘制弧形文字
+**实现步骤**:
+1. 设置文本样式（对齐、基线、颜色、字体）
+2. 定义文字资源数组（支持国际化）
+3. 循环6次，在每个扇形绘制弧形文字
+4. 调用drawCircularText绘制弧形文字
+
+##### 3.9 获取资源字符串
+```typescript
+getResourceString(resource: Resource): string {
+  if (CheckEmptyUtils.isEmptyObj(resource)) {
+    Logger.error('[DrawModel][getResourceString] resource is empty.')
+    return '';
+  }
+  let resourceString: string = '';
+  try {
+    resourceString = uiContext!.getHostContext()!.resourceManager.getStringSync(resource.id);
+  } catch (error) {
+    Logger.error(`[DrawModel][getResourceString]getStringSync failed, error : ${JSON.stringify(error)}.`);
+  }
+  return resourceString;
+}
+```
+**功能**: 根据资源ID获取字符串（支持国际化）
+**实现方式**: 使用resourceManager.getStringSync同步获取字符串资源
+
+##### 3.10 绘制弧形文字
+```typescript
+drawCircularText(textString: string, startAngle: number, endAngle: number) {
+  if (CheckEmptyUtils.isEmptyStr(textString)) {
+    Logger.error('[DrawModel][drawCircularText] textString is empty.')
+    return;
+  }
+
+  class CircleText {
+    x: number = 0;
+    y: number = 0;
+    radius: number = 0;
+  }
+
+  let circleText: CircleText = {
+    x: 0,
+    y: 0,
+    radius: this.screenWidth * CommonConstants.INNER_ARC_RATIOS
+  };
+  
+  let radius = circleText.radius - circleText.radius / CommonConstants.COUNT;
+  let angleDecrement = (startAngle - endAngle) / (textString.length - 1);
+  let angle = startAngle;
+  let index = 0;
+  let character: string;
+
+  while (index < textString.length) {
+    character = textString.charAt(index);
+    this.canvasContext?.save();
+    this.canvasContext?.beginPath();
+    this.canvasContext?.translate(circleText.x + Math.cos(angle) * radius,
+      circleText.y - Math.sin(angle) * radius);
+    this.canvasContext?.rotate(Math.PI / CommonConstants.TWO - angle);
+    this.canvasContext?.fillText(character, 0, 0);
+    angle -= angleDecrement;
+    index++;
+    this.canvasContext?.restore();
+  }
+}
+```
+**功能**: 绘制沿圆弧排列的文字
+**实现原理**:
+1. 计算每个字符占据的角度
+2. 循环每个字符：
+   - 计算字符位置（使用三角函数）
+   - 平移到该位置
+   - 旋转字符使其沿圆弧方向
+   - 绘制字符
+3. 实现文字沿圆弧排列效果
+
+##### 3.11 绘制奖品图片
+```typescript
+drawImage() {
+  let beginAngle = this.startAngle;
+  let imageSrc = [
+    CommonConstants.WATERMELON_IMAGE_URL, CommonConstants.HAMBURG_IMAGE_URL,
+    CommonConstants.SMILE_IMAGE_URL, CommonConstants.CAKE_IMAGE_URL,
+    CommonConstants.HAMBURG_IMAGE_URL, CommonConstants.SMILE_IMAGE_URL
+  ];
+  
+  for (let i = 0; i < CommonConstants.COUNT; i++) {
+    let image = new ImageBitmap(imageSrc[i]);
+    this.canvasContext?.save();
+    this.canvasContext?.rotate(beginAngle * Math.PI / CommonConstants.HALF_CIRCLE);
+    this.canvasContext?.drawImage(image, 
+      this.screenWidth * CommonConstants.IMAGE_DX_RATIOS,
+      this.screenWidth * CommonConstants.IMAGE_DY_RATIOS, 
+      CommonConstants.IMAGE_SIZE,
+      CommonConstants.IMAGE_SIZE);
+    beginAngle += this.avgAngle;
+    this.canvasContext?.restore();
+  }
+}
+```
+**功能**: 在每个扇形区域绘制奖品图片
+**实现步骤**:
+1. 定义图片路径数组
+2. 循环6次，每次：
+   - 创建ImageBitmap对象
+   - 旋转坐标系到对应扇形
+   - drawImage绘制图片
+   - 恢复坐标系
+
+##### 3.12 显示中奖数据
+```typescript
+showPrizeData(randomAngle: number): PrizeData {
+  for (let i = 1; i <= CommonConstants.COUNT; i++) {
+    if (randomAngle <= i * this.avgAngle) {
+      return this.getPrizeData(i);
+    }
+  }
+  return new PrizeData();
+}
+```
+**功能**: 根据随机角度确定中奖奖品
+**实现逻辑**: 
+- 遍历6个扇区
+- 判断随机角度落在哪个扇区
+- 返回对应的奖品数据
+
+##### 3.13 获取奖品数据
+```typescript
+getPrizeData(scopeNum: number): PrizeData {
+  let prizeData: PrizeData = new PrizeData();
+  switch (scopeNum) {
+    case EnumeratedValue.ONE:
+      prizeData.message = $r('app.string.prize_text_watermelon');
+      prizeData.imageSrc = CommonConstants.WATERMELON_IMAGE_URL;
+      break;
+    case EnumeratedValue.THREE:
+      prizeData.message = $r('app.string.prize_text_smile');
+      prizeData.imageSrc = CommonConstants.SMILE_IMAGE_URL;
+      break;
+    case EnumeratedValue.FOUR:
+      prizeData.message = $r('app.string.prize_text_cake');
+      prizeData.imageSrc = CommonConstants.CAKE_IMAGE_URL;
+      break;
+    case EnumeratedValue.TWO:
+    case EnumeratedValue.FIVE:
+      prizeData.message = $r('app.string.prize_text_hamburger');
+      prizeData.imageSrc = CommonConstants.HAMBURG_IMAGE_URL;
+      break;
+    case EnumeratedValue.SIX:
+      prizeData.message = $r('app.string.prize_text_smile');
+      prizeData.imageSrc = CommonConstants.SMILE_IMAGE_URL;
+      break;
+    default:
+      break;
+  }
+  return prizeData;
+}
+```
+**功能**: 根据扇区编号获取具体奖品信息
+**奖品对应关系**:
+- 扇区1: 西瓜
+- 扇区2: 汉堡
+- 扇区3: 笑脸
+- 扇区4: 蛋糕
+- 扇区5: 汉堡
+- 扇区6: 笑脸
+
+---
+
+### 4. PrizeDialog.ets - 中奖弹窗
+
+**文件路径**: `entry/src/main/ets/view/PrizeDialog.ets`
+
+#### 功能说明
+PrizeDialog是自定义弹窗组件，用于展示中奖结果。
+
+#### 代码详解
+
+##### 4.1 组件定义
+```typescript
+@CustomDialog
+export default struct PrizeDialog {
+  @Link prizeData: PrizeData;
+  @Link enableFlag: boolean;
+  private controller?: CustomDialogController;
+}
+```
+**装饰器说明**:
+- **@CustomDialog**: 标记为自定义弹窗组件
+- **@Link**: 双向绑定父组件数据
+- **controller**: 弹窗控制器，用于关闭弹窗
+
+##### 4.2 UI构建
+```typescript
+build() {
+  Column() {
+    // 奖品图片
+    Image(this.prizeData.imageSrc !== undefined ? this.prizeData.imageSrc : '')
+      .width($r('app.float.dialog_image_size'))
+      .height($r('app.float.dialog_image_size'))
+      .margin({
+        top: $r('app.float.dialog_image_top'),
+        bottom: $r('app.float.dialog_image_bottom')
+      })
+      .rotate({
+        x: 0,
+        y: 0,
+        z: 1,
+        angle: CommonConstants.TRANSFORM_ANGLE
+      })
+
+    // 奖品文字
+    Text(this.prizeData.message)
+      .fontSize($r('app.float.dialog_font_size'))
+      .textAlign(TextAlign.Center)
+      .margin({ bottom: $r('app.float.dialog_message_bottom') })
+
+    // 确认按钮
+    Text($r('app.string.text_confirm'))
+      .fontColor($r('app.color.text_font_color'))
+      .fontWeight(StyleConstants.FONT_WEIGHT)
+      .fontSize($r('app.float.dialog_font_size'))
+      .textAlign(TextAlign.Center)
+      .onClick(() => {
+        this.controller?.close();
+        this.enableFlag = !this.enableFlag;
+      })
+  }
+  .backgroundColor($r('app.color.dialog_background'))
+  .width(StyleConstants.FULL_PERCENT)
+  .height($r('app.float.dialog_height'))
+}
+```
+**UI结构**:
+1. **Column容器**: 垂直布局
+2. **奖品图片**: 
+   - 显示中奖奖品图片
+   - 旋转-120度（装饰效果）
+3. **奖品文字**: 显示中奖信息
+4. **确认按钮**: 
+   - 点击关闭弹窗
+   - 恢复按钮可点击状态
+
+---
+
+## 数据模型详解
+
+### 1. PrizeData.ets - 奖品数据模型
+
+**文件路径**: `entry/src/main/ets/viewmodel/PrizeData.ets`
+
+```typescript
+export default class PrizeData {
+  message?: Resource;    // 奖品消息（支持国际化）
+  imageSrc?: string;     // 奖品图片路径
+}
+```
+**功能**: 存储中奖奖品信息
+**属性说明**:
+- **message**: 奖品描述文字，类型为Resource支持多语言
+- **imageSrc**: 奖品图片路径
+
+---
+
+### 2. FillArcData.ets - 圆弧数据模型
+
+**文件路径**: `entry/src/main/ets/viewmodel/FillArcData.ets`
+
+```typescript
+export default class FillArcData {
+  x: number;           // 圆心X坐标
+  y: number;           // 圆心Y坐标
+  radius: number;      // 半径
+  startAngle: number;  // 起始角度（弧度）
+  endAngle: number;    // 结束角度（弧度）
+
+  constructor(x: number, y: number, radius: number, startAngle: number, endAngle: number) {
+    this.x = x;
+    this.y = y;
+    this.radius = radius;
+    this.startAngle = startAngle;
+    this.endAngle = endAngle;
+  }
+}
+```
+**功能**: 封装绘制圆弧所需的数据
+**使用场景**: 在DrawModel的fillArc方法中使用
+
+---
+
+## 工具类详解
+
+### 1. Logger.ets - 日志工具类
+
+**文件路径**: `entry/src/main/ets/common/utils/Logger.ets`
+
+```typescript
+class Logger {
+  private domain: number;
+  private prefix: string;
+  private format: string = '%{public}s, %{public}s';
+
+  constructor(prefix: string = 'MyApp', domain: number = 0xFF00) {
+    this.prefix = prefix;
+    this.domain = domain;
+  }
+
+  debug(...args: string[]): void {
+    hilog.debug(this.domain, this.prefix, this.format, args);
+  }
+
+  info(...args: string[]): void {
+    hilog.info(this.domain, this.prefix, this.format, args);
+  }
+
+  warn(...args: string[]): void {
+    hilog.warn(this.domain, this.prefix, this.format, args);
+  }
+
+  error(...args: string[]): void {
+    hilog.error(this.domain, this.prefix, this.format, args);
+  }
+}
+
+export default new Logger('[CanvasComponent]', 0xFF00)
+```
+**功能**: 封装hilog日志接口
+**实现方式**:
+- 使用单例模式，导出一个预配置的Logger实例
+- prefix设置为'[CanvasComponent]'
+- domain设置为0xFF00
+- 提供debug、info、warn、error四个日志级别
+
+---
+
+### 2. CheckEmptyUtils.ets - 空值检查工具类
+
+**文件路径**: `entry/src/main/ets/common/utils/CheckEmptyUtils.ets`
+
+```typescript
+class CheckEmptyUtils {
+  isEmptyObj(obj: object | string) {
+    return (typeof obj === 'undefined' || obj === null || obj === '');
+  }
+
+  isEmptyStr(str: string) {
+    return str.trim().length === 0;
+  }
+
+  isEmptyArr(arr: Array<string>) {
+    return arr.length === 0;
+  }
+}
+
+export default new CheckEmptyUtils();
+```
+**功能**: 提供数据空值检查方法
+**方法说明**:
+- **isEmptyObj**: 检查对象是否为空（undefined、null、空字符串）
+- **isEmptyStr**: 检查字符串是否为空（去除空格后长度为0）
+- **isEmptyArr**: 检查数组是否为空
+
+---
+
+## 常量配置详解
+
+### 1. CommonConstants.ets - 通用常量类
+
+**文件路径**: `entry/src/main/ets/common/constants/CommonConstants.ets`
+
+#### 图片路径常量
+```typescript
+static readonly WATERMELON_IMAGE_URL: string = 'resources/base/media/ic_watermelon.png';
+static readonly HAMBURG_IMAGE_URL: string = 'resources/base/media/ic_hamburg.png';
+static readonly CAKE_IMAGE_URL: string = 'resources/base/media/ic_cake.png';
+static readonly SMILE_IMAGE_URL: string = 'resources/base/media/ic_smile.png';
 ```
 
-核心文件职责：
+#### 角度与数量常量
+```typescript
+static readonly CIRCLE: number = 360;              // 圆周角度
+static readonly HALF_CIRCLE: number = 180;         // 半圆角度
+static readonly COUNT: number = 6;                 // 扇区数量
+static readonly SMALL_CIRCLE_COUNT: number = 8;    // 小圆点数量
+static readonly ANGLE: number = 270;               // 奖品角度基准
+static readonly DURATION: number = 4000;           // 动画时长(ms)
+```
+
+#### 比例常量（用于自适应布局）
+```typescript
+static readonly FLOWER_POINT_Y_RATIOS: number = 0.255;      // 花瓣Y坐标比例
+static readonly FLOWER_RADIUS_RATIOS: number = 0.217;       // 花瓣外半径比例
+static readonly FLOWER_INNER_RATIOS: number = 0.193;        // 花瓣内半径比例
+static readonly OUT_CIRCLE_RATIOS: number = 0.4;            // 外圈半径比例
+static readonly SMALL_CIRCLE_RATIOS: number = 0.378;        // 小圆点位置比例
+static readonly SMALL_CIRCLE_RADIUS: number = 4.1;          // 小圆点半径
+static readonly INNER_CIRCLE_RATIOS: number = 0.356;        // 内圈半径比例
+static readonly INNER_WHITE_CIRCLE_RATIOS: number = 0.339;  // 内圈白色半径比例
+static readonly INNER_ARC_RATIOS: number = 0.336;           // 扇形半径比例
+static readonly IMAGE_DX_RATIOS: number = 0.114;            // 图片X偏移比例
+static readonly IMAGE_DY_RATIOS: number = 0.052;            // 图片Y偏移比例
+```
+
+#### 文本样式常量
+```typescript
+static readonly TEXT_ALIGN: CanvasTextAlign = 'center';
+static readonly TEXT_BASE_LINE: CanvasTextBaseline = 'middle';
+static readonly CANVAS_FONT: string = 'px sans-serif';
+```
+
+#### 枚举值
+```typescript
+export enum EnumeratedValue {
+  ONE = 1,
+  TWO = 2,
+  THREE = 3,
+  FOUR = 4,
+  FIVE = 5,
+  SIX = 6
+}
+```
+
+---
+
+### 2. ColorConstants.ets - 颜色常量类
+
+**文件路径**: `entry/src/main/ets/common/constants/ColorConstants.ets`
+
+```typescript
+export default class ColorConstants {
+  static readonly FLOWER_OUT_COLOR: string = '#ED6E21';      // 花瓣外层颜色（橙色）
+  static readonly FLOWER_INNER_COLOR: string = '#F8A01E';    // 花瓣内层颜色（黄色）
+  static readonly OUT_CIRCLE_COLOR: string = '#F7CD03';      // 外圈颜色（亮黄色）
+  static readonly WHITE_COLOR: string = '#FFFFFF';           // 白色
+  static readonly INNER_CIRCLE_COLOR: string = '#F8A01E';    // 内圈颜色（黄色）
+  static readonly ARC_PINK_COLOR: string = '#FFC6BD';        // 扇形粉色
+  static readonly ARC_YELLOW_COLOR: string = '#FFEC90';      // 扇形黄色
+  static readonly ARC_GREEN_COLOR: string = '#ECF9C7'        // 扇形绿色
+  static readonly TEXT_COLOR: string = '#ED6E21';            // 文字颜色（橙色）
+}
+```
+
+---
+
+### 3. StyleConstants.ets - 样式常量类
+
+**文件路径**: `entry/src/main/ets/common/constants/StyleConstants.ets`
+
+```typescript
+const uiContext: UIContext | undefined = AppStorage.get('uiContext');
+
+export default class StyleConstants {
+  static readonly FONT_WEIGHT: number = 500;                      // 字体粗细
+  static readonly FULL_PERCENT: string = '100%';                  // 百分之百
+  static readonly BACKGROUND_IMAGE_SIZE: string = '38.7%';        // 背景图片高度
+  static readonly CENTER_IMAGE_WIDTH: string = '19.3%';           // 中心图片宽度
+  static readonly CENTER_IMAGE_HEIGHT: string = '10.6%';          // 中心图片高度
+  static readonly ARC_TEXT_SIZE: number = uiContext!.fp2px(14);   // 弧形文字大小（fp转px）
+}
+```
+
+---
+
+## 资源文件详解
+
+### 1. 字符串资源
+
+#### base/element/string.json（默认）
+```json
+{
+  "string": [
+    { "name": "text_smile", "value": "Smile" },
+    { "name": "text_hamburger", "value": "Hamburger" },
+    { "name": "text_cake", "value": "Cake" },
+    { "name": "text_watermelon", "value": "Watermelon" },
+    { "name": "prize_text_watermelon", "value": "Congratulations on winning the watermelon" },
+    { "name": "prize_text_smile", "value": "Congratulations on winning the smile" },
+    { "name": "prize_text_cake", "value": "Congratulations on winning the cake" },
+    { "name": "prize_text_hamburger", "value": "Congratulations on winning the hamburger" },
+    { "name": "text_confirm", "value": "Confirm" }
+  ]
+}
+```
+
+#### zh_CN/element/string.json（中文）
+```json
+{
+  "string": [
+    { "name": "text_smile", "value": "笑脸" },
+    { "name": "text_hamburger", "value": "汉堡" },
+    { "name": "text_cake", "value": "蛋糕" },
+    { "name": "text_watermelon", "value": "西瓜" },
+    { "name": "prize_text_watermelon", "value": "恭喜中奖西瓜" },
+    { "name": "prize_text_smile", "value": "恭喜中奖笑脸" },
+    { "name": "prize_text_cake", "value": "恭喜中奖蛋糕" },
+    { "name": "prize_text_hamburger", "value": "恭喜中奖汉堡" },
+    { "name": "text_confirm", "value": "确认" }
+  ]
+}
+```
+
+### 2. 图片资源
+- **ic_background.png**: 背景图片
+- **ic_center.png**: 中心"开始"按钮图片
+- **ic_cake.png**: 蛋糕奖品图片
+- **ic_hamburg.png**: 汉堡奖品图片
+- **ic_smile.png**: 笑脸奖品图片
+- **ic_watermelon.png**: 西瓜奖品图片
+
+---
+
+## 功能流程分析
+
+### 1. 应用启动流程
+```
+EntryAbility.onCreate()
+    ↓
+EntryAbility.onWindowStageCreate()
+    ↓
+windowStage.loadContent('pages/CanvasPage')
+    ↓
+AppStorage.setOrCreate('uiContext', ...)
+    ↓
+CanvasPage.aboutToAppear()
+    ↓
+获取屏幕尺寸
+    ↓
+订阅语言切换事件
+    ↓
+CanvasPage.build()
+    ↓
+Canvas.onReady()
+    ↓
+DrawModel.draw() 绘制转盘
+```
+
+### 2. 抽奖流程
+```
+用户点击中心按钮
+    ↓
+enableFlag = false（禁用按钮）
+    ↓
+startAnimator()
+    ↓
+生成随机角度 randomAngle
+    ↓
+获取中奖数据 prizeData
+    ↓
+启动动画 animateTo
+    ↓
+转盘旋转5圈 + 停止角度
+    ↓
+动画结束 onFinish
+    ↓
+打开中奖弹窗 dialogController.open()
+    ↓
+用户点击确认
+    ↓
+关闭弹窗
+    ↓
+enableFlag = true（恢复按钮）
+```
+
+### 3. 绘制流程
+```
+DrawModel.draw()
+    ↓
+清空画布 clearRect
+    ↓
+平移坐标系到中心 translate
+    ↓
+绘制外圈花瓣 drawFlower
+    ↓
+绘制外圈和小圆点 drawOutCircle
+    ↓
+绘制内圈 drawInnerCircle
+    ↓
+绘制扇形抽奖区 drawInnerArc
+    ↓
+绘制扇形文字 drawArcText
+    ↓
+绘制奖品图片 drawImage
+    ↓
+恢复坐标系 translate
+```
+
+### 4. 国际化流程
+```
+系统语言切换
+    ↓
+触发 COMMON_EVENT_LOCALE_CHANGED 事件
+    ↓
+更新 currentLang
+    ↓
+onPageShow 检测语言变化
+    ↓
+重新绘制转盘（更新文字）
+```
+
+---
+
+## 技术亮点
+
+### 1. Canvas自定义绘图
+- 使用CanvasRenderingContext2D进行自定义绘制
+- 分层绘制，从外到内依次绘制各层
+- 使用坐标系变换（translate、rotate）简化绘制逻辑
+
+### 2. 弧形文字绘制
+- 通过三角函数计算每个字符的位置
+- 旋转字符使其沿圆弧方向排列
+- 实现美观的弧形文字效果
+
+### 3. 显式动画
+- 使用animateTo实现转盘旋转动画
+- 支持自定义时长、缓动曲线、播放模式
+- 通过闭包修改状态驱动动画
+
+### 4. 自适应布局
+- 所有尺寸使用屏幕宽度的比例计算
+- 支持不同屏幕尺寸的自适应
+- 使用px2vp、fp2px进行单位转换
+
+### 5. 国际化支持
+- 使用Resource类型引用字符串资源
+- 监听系统语言切换事件
+- 动态更新界面文字
+
+### 6. 状态管理
+- 使用@State、@Link进行状态管理
+- 双向绑定实现父子组件通信
+- 状态驱动UI更新
+
+---
+
+## 总结
+
+本项目是一个完整的HarmonyOS应用示例，展示了以下技术要点：
+
+1. **Canvas自定义绘图**: 使用Canvas组件绘制复杂的抽奖转盘
+2. **动画系统**: 使用显式动画实现流畅的转盘旋转效果
+3. **自定义弹窗**: 使用CustomDialogController实现中奖结果展示
+4. **国际化**: 支持中英文切换，动态更新界面
+5. **状态管理**: 使用ArkUI的状态管理机制实现数据驱动
+6. **自适应布局**: 使用比例计算实现不同屏幕尺寸的适配
+
+项目代码结构清晰，分层合理，是学习HarmonyOS应用开发的优秀示例。
+
+---
+
+## 第二部分：新增功能完整解析（README2）
+
+> 来源文件：`README2.md`
+
+# Canvas抽奖应用 - 新增功能完整代码解析文档
+
+## 目录
+1. [新增功能概览](#新增功能概览)
+2. [刮刮乐 (ScratchCardView)](#1-刮刮乐-scratchcardviewets)
+3. [抽奖记录 (HistoryView)](#2-抽奖记录-historyviewets)
+4. [彩纸庆祝动画 (ConfettiEffect)](#3-彩纸庆祝动画-confettieffectets)
+5. [星空粒子背景 (StarParticle)](#4-星空粒子背景-starparticleets)
+6. [转盘改进 (WheelView)](#5-转盘改进-wheelviewets)
+7. [中奖弹窗改进 (PrizeDialog)](#6-中奖弹窗改进-prizedialogets)
+8. [绘图逻辑改进 (DrawModel)](#7-绘图逻辑改进-drawmodelets)
+9. [主页面改进 (CanvasPage)](#8-主页面改进-canvaspageets)
+10. [常量配置改进](#9-常量配置改进)
+11. [功能流程分析](#10-功能流程分析)
+
+---
+
+## 新增功能概览
+
+### 与第一版相比新增的功能
+
+| 功能 | 文件 | 说明 |
+|------|------|------|
+| 🎫 **刮刮乐** | `ScratchCardView.ets` | 手指在涂层上滑动刮开，露出下方奖品，支持连续刮卡 |
+| 📊 **抽奖记录** | `HistoryView.ets` | 自动记录每次抽奖结果，统计中奖率，按时间倒序展示 |
+| 🎊 **彩纸庆祝** | `ConfettiEffect.ets` | 中奖时全屏飘落彩色粒子（圆形+矩形），增强仪式感 |
+| ⭐ **星空粒子** | `StarParticle.ets` | 页面背景动态闪烁的星星，营造沉浸氛围 |
+| 🎡 **转盘增强** | `WheelView.ets` | 新增连抽模式（3/5连抽）、按钮呼吸动效、语言切换监听 |
+| 🏆 **弹窗升级** | `PrizeDialog.ets` | Emoji替代图片、入场缩放淡入动画 |
+| 🎨 **绘图升级** | `DrawModel.ets` | 径向渐变扇区、金色装饰环、外圈辉光、内圈光晕、emoji绘制 |
+| 📅 **签到系统** | `CanvasPage.ets` | 每日签到、连续天数统计、签到状态持久化 |
+| 🌌 **视觉主题** | `ColorConstants.ets` | 全新暗色渐变背景 + 霓虹光效色彩体系 |
+
+---
+
+## 1. 刮刮乐 (ScratchCardView.ets)
+
+**文件路径**: `entry/src/main/ets/view/ScratchCardView.ets`
+
+### 功能说明
+
+刮刮乐是新增的互动抽奖玩法。用户用手指在金色涂层上滑动刮开，露出下方随机奖品，刮开面积达到45%后自动彻底揭开涂层，显示中奖结果并保存记录。
+
+### 代码详解
+
+#### 1.1 导入模块
+```typescript
+import Logger from '../common/utils/Logger';
+import StyleConstants from '../common/constants/StyleConstants';
+import CommonConstants from '../common/constants/CommonConstants';
+import ColorConstants from '../common/constants/ColorConstants';
+import { window } from '@kit.ArkUI';
+import { Context } from '@kit.AbilityKit';
+```
+**功能**: 导入日志工具、样式常量、通用常量、颜色常量、窗口API和应用上下文。
+
+#### 1.2 全局上下文获取
+```typescript
+const uiContext: UIContext | undefined = AppStorage.get('uiContext');
+let context: Context = uiContext!.getHostContext()!;
+```
+**功能**: 从AppStorage获取UI上下文，再获取Ability上下文，用于窗口操作和资源读取。
+
+#### 1.3 奖品数据类型定义
+```typescript
+interface ScratchPrize {
+  message: Resource;
+  imageSrc: string;
+}
+```
+**功能**: 定义刮刮乐奖品的数据结构，包含奖品的国际化文字资源(message)和图片路径(imageSrc)。
+
+#### 1.4 组件定义与状态变量
+```typescript
+@Component
+export default struct ScratchCardView {
+  private settings: RenderingContextSettings = new RenderingContextSettings(true);
+  private canvasContext: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
+  @State screenWidth: number = 360;
+  @State screenHeight: number = 640;
+  @State scratchPercent: number = 0;
+  @State isRevealed: boolean = false;
+  @State hasNewCard: boolean = true;
+  private cardX: number = 0;
+  private cardY: number = 0;
+  private cardW: number = 0;
+  private cardH: number = 0;
+  private scratchedPixels: number = 0;
+  private totalPixels: number = 0;
+  private isScratching: boolean = false;
+  private canvasInitialized: boolean = false;
+  // ...
+}
+```
+**说明**:
+- **settings**: 渲染上下文设置，`true`表示开启抗锯齿
+- **canvasContext**: Canvas 2D渲染上下文，用于在Canvas组件上绘制涂层和奖品
+- **screenWidth/screenHeight**: 屏幕宽高，用于自适应布局（@State装饰保证更新时重新渲染）
+- **scratchPercent**: 已刮开的百分比，用于UI反馈显示
+- **isRevealed**: 是否已揭开涂层，控制中奖庆祝界面显隐
+- **hasNewCard**: 是否有新卡片，控制初始化
+- **cardX/cardY/cardW/cardH**: 卡片在画布上的位置和尺寸
+- **scratchedPixels/totalPixels**: 已刮像素数 / 总像素数，用于计算百分比
+- **isScratching**: 是否正在刮擦，防止触摸移出后继续刮擦
+- **canvasInitialized**: Canvas是否已初始化完成，防止组件重建时重复初始化
+- **currentPrize**: 当前卡片的中奖奖品
+- **allPrizes**: 所有可选奖品池，随机从中选取
+
+#### 1.5 初始化奖品池
+```typescript
+private currentPrize: ScratchPrize = {
+  message: $r('app.string.prize_text_smile'),
+  imageSrc: CommonConstants.SMILE_IMAGE_URL
+};
+private allPrizes: ScratchPrize[] = [
+  { message: $r('app.string.prize_text_watermelon'), imageSrc: CommonConstants.WATERMELON_IMAGE_URL },
+  { message: $r('app.string.prize_text_hamburger'), imageSrc: CommonConstants.HAMBURG_IMAGE_URL },
+  { message: $r('app.string.prize_text_cake'), imageSrc: CommonConstants.CAKE_IMAGE_URL },
+  { message: $r('app.string.prize_text_smile'), imageSrc: CommonConstants.SMILE_IMAGE_URL },
+];
+```
+**功能**: 定义4种可选奖品（西瓜、汉堡、蛋糕、笑脸），`currentPrize`默认笑脸，会在初始化时随机选择。
+
+#### 1.6 aboutToAppear - 获取窗口尺寸
+```typescript
+aboutToAppear(): void {
+  window.getLastWindow(context)
+    .then((windowClass: window.Window) => {
+      const wp = windowClass.getWindowProperties();
+      this.screenWidth = this.getUIContext().px2vp(wp.windowRect.width);
+      this.screenHeight = this.getUIContext().px2vp(wp.windowRect.height);
+    })
+    .catch((error: Error) => {
+      Logger.error('Failed window size: ' + JSON.stringify(error));
+    });
+}
+```
+**功能**: 页面即将显示时获取窗口实际尺寸，将像素值转换为vp（虚拟像素）单位，确保在不同设备上显示一致。
+
+#### 1.7 initCard - 初始化卡片
+```typescript
+initCard(): void {
+  this.isRevealed = false;
+  this.scratchedPixels = 0;
+  this.scratchPercent = 0;
+  this.isScratching = false;
+  this.hasNewCard = true;
+  this.pickPrize();
+  this.drawCard();
+}
+```
+**功能**: 重置所有刮卡状态，随机选取奖品，重新绘制卡片。每次"再来一张"时调用此方法。
+
+#### 1.8 pickPrize - 随机选奖
+```typescript
+pickPrize(): void {
+  const idx = Math.floor(Math.random() * this.allPrizes.length);
+  this.currentPrize = this.allPrizes[idx];
+}
+```
+**功能**: 从4种奖品中随机选取一个，`Math.random()`生成[0,1)随机数，乘以数组长度后向下取整。
+
+#### 1.9 drawCard - 绘制刮刮卡
+```typescript
+drawCard(): void {
+  const ctx = this.canvasContext;
+  const cw = this.screenWidth * 0.8;
+  const ch = cw * 1.2;
+  this.cardX = (this.screenWidth - cw) / 2;
+  this.cardY = (this.screenHeight - ch) / 2 - 20;
+  this.cardW = cw;
+  this.cardH = ch;
+  this.totalPixels = cw * ch;
+```
+**功能**: 计算卡片尺寸和位置。卡片宽度为屏幕宽的80%，高度为宽度的1.2倍，居中显示（水平偏移20vp）。`totalPixels`记录卡片总面积用于计算刮开百分比。
+
+```typescript
+  // Clear
+  ctx.clearRect(0, 0, this.screenWidth, this.screenHeight);
+```
+**功能**: 清空整个画布，准备重新绘制。
+
+```typescript
+  // --- Layer 1: Prize content ---
+  // Card background
+  ctx.save();
+  this.roundRect(ctx, this.cardX, this.cardY, cw, ch, 16);
+  ctx.fillStyle = '#1E1E3F';
+  ctx.fill();
+  ctx.restore();
+```
+**功能**: 绘制第一层（奖品底层）。`save()`保存画布状态，`roundRect()`绘制圆角矩形路径（圆角半径16），填充深蓝紫色作为卡片背景，`restore()`恢复画布状态。
+
+```typescript
+  // Decorative border
+  ctx.save();
+  this.roundRect(ctx, this.cardX, this.cardY, cw, ch, 16);
+  ctx.strokeStyle = '#FFD700';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+```
+**功能**: 绘制金色边框。使用同样的圆角路径，`strokeStyle`设置金色，`lineWidth`设置线宽2px，`stroke()`描边。
+
+```typescript
+  // Prize text
+  ctx.save();
+  ctx.fillStyle = '#FFD700';
+  ctx.font = '22px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const prizeStr = this.getPrizeString();
+  ctx.fillText(prizeStr, this.screenWidth / 2, this.cardY + ch * 0.35);
+  ctx.restore();
+```
+**功能**: 绘制奖品文字。金色22px字体，水平居中，垂直位于卡片35%位置处。文字内容通过`getPrizeString()`获取中文字符串。
+
+```typescript
+  // Prize image (emoji)
+  const imgSize = 80;
+  ctx.save();
+  ctx.font = '64px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 6;
+  ctx.fillText(this.getPrizeEmoji(), this.screenWidth / 2, this.cardY + ch * 0.45 + imgSize / 2);
+  ctx.restore();
+```
+**功能**: 绘制奖品Emoji。64px超大字体，白色加黑色阴影（模糊6px），位于卡片垂直45%+40px处，确保在文字下方居中显示。
+
+```typescript
+  // Hint text
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = '14px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('刮开涂层查看奖品', this.screenWidth / 2, this.cardY + ch * 0.78);
+  ctx.restore();
+```
+**功能**: 在卡片底部绘制半透明提示文字"刮开涂层查看奖品"，引导用户操作。
+
+```typescript
+  // --- Layer 2: Gold coating ---
+  ctx.save();
+  this.roundRect(ctx, this.cardX, this.cardY, cw, ch, 16);
+  ctx.clip();
+```
+**功能**: 开始绘制第二层（金色涂层）。先绘制圆角矩形路径，然后`clip()`裁剪画布，使后续所有绘制只在此圆角范围内显示。
+
+```typescript
+  const gradient = ctx.createLinearGradient(this.cardX, this.cardY, this.cardX + cw, this.cardY + ch);
+  gradient.addColorStop(0, ColorConstants.SCRATCH_COAT_COLOR2);
+  gradient.addColorStop(0.5, ColorConstants.SCRATCH_COAT_COLOR1);
+  gradient.addColorStop(1, ColorConstants.SCRATCH_COAT_COLOR2);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(this.cardX, this.cardY, cw, ch);
+```
+**功能**: 创建线性渐变（从卡片左上到右下），使用金色系颜色（橙色→金色→橙色），填充整个卡片区域形成华丽的金色涂层。
+
+```typescript
+  // Scratch hint text on coating
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '16px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('👆 用手指刮开', this.screenWidth / 2, this.cardY + ch / 2);
+  ctx.restore();
+```
+**功能**: 在金色涂层上绘制半透明白色提示"👆 用手指刮开"，在涂层正中央显示。
+
+#### 1.10 roundRect - 绘制圆角矩形
+```typescript
+roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+```
+**功能**: 手动绘制圆角矩形路径。从左上角开始顺时针绘制，使用`arcTo`在每个角绘制圆弧，`r`参数控制圆角大小。Canvas原生没有圆角矩形API，所以手动实现。
+
+#### 1.11 getPrizeEmoji 和 getPrizeString
+```typescript
+getPrizeEmoji(): string {
+  if (this.currentPrize.imageSrc === CommonConstants.WATERMELON_IMAGE_URL) return '🍉';
+  if (this.currentPrize.imageSrc === CommonConstants.HAMBURG_IMAGE_URL) return '🍔';
+  if (this.currentPrize.imageSrc === CommonConstants.CAKE_IMAGE_URL) return '🎂';
+  return '😊';
+}
+
+getPrizeString(): string {
+  const resources = [
+    $r('app.string.prize_text_watermelon'),
+    $r('app.string.prize_text_hamburger'),
+    $r('app.string.prize_text_cake'),
+    $r('app.string.prize_text_smile'),
+  ];
+  const resStr = this.currentPrize.message!;
+  try {
+    return uiContext!.getHostContext()!.resourceManager.getStringSync(resStr.id);
+  } catch (_e) {
+    return '🎉 Prize!';
+  }
+}
+```
+**功能**: 
+- `getPrizeEmoji()`: 根据imageSrc路径判断奖品类型，返回对应Emoji字符
+- `getPrizeString()`: 从资源管理器中同步获取当前奖品的中文描述文字，失败时返回默认文本
+
+#### 1.12 onTouchHandler - 触摸事件处理
+```typescript
+onTouchHandler(event: TouchEvent): void {
+  if (this.isRevealed) return;
+
+  if (event.type === TouchType.Down) {
+    this.isScratching = true;
+  }
+
+  if (event.type === TouchType.Move && this.isScratching) {
+    const touch = event.touches[0];
+    if (!touch) return;
+    this.scratchAt(touch.x, touch.y);
+  }
+
+  if (event.type === TouchType.Up) {
+    this.isScratching = false;
+  }
+}
+```
+**功能**: 处理触摸事件的三阶段：
+- **Down**: 手指按下，设置`isScratching = true`开始刮擦
+- **Move**: 手指移动且正在刮擦，获取触摸点坐标，调用`scratchAt()`擦除涂层
+- **Up**: 手指抬起，设置`isScratching = false`停止刮擦
+
+#### 1.13 scratchAt - 刮擦涂层
+```typescript
+scratchAt(x: number, y: number): void {
+  const ctx = this.canvasContext;
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.beginPath();
+  ctx.arc(x, y, 24, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+```
+**功能**: 在触摸点位置擦除涂层。核心是`globalCompositeOperation = 'destination-out'`——这是Canvas合成模式，意思是"只保留目标图像中与源图像不重叠的部分"，即在涂层上"挖"出一个圆形透明区域。圆半径24px模拟手指大小。
+
+```typescript
+  this.scratchedPixels += Math.PI * 24 * 24;
+  this.scratchPercent = Math.min(100, Math.round((this.scratchedPixels / this.totalPixels) * 100));
+
+  if (this.scratchPercent >= 45 && !this.isRevealed) {
+    this.revealCard();
+  }
+}
+```
+**功能**: 
+- 计算已刮像素数（累加每次刮擦圆的面积），计算百分比
+- 当刮开面积≥45%时触发`revealCard()`自动揭开整张卡片（注意：存在重复计算重叠面积的问题，但作为游戏来说可接受）
+
+#### 1.14 revealCard - 揭开卡片
+```typescript
+revealCard(): void {
+  this.isRevealed = true;
+  // Clear remaining coating
+  const ctx = this.canvasContext;
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fillRect(0, 0, this.screenWidth, this.screenHeight);
+  ctx.restore();
+  this.saveHistory();
+}
+```
+**功能**: 设置`isRevealed = true`显示中奖庆祝界面。并用`destination-out`全屏擦除剩余涂层，让奖品完全露出。同时调用`saveHistory()`记录中奖结果。
+
+#### 1.15 saveHistory - 保存历史记录
+```typescript
+saveHistory(): void {
+  const key: string = 'wheel_history';
+  const raw: string = AppStorage.get<string>(key) || '';
+  const img: string = this.currentPrize.imageSrc || '';
+  const entry: string = '' + new Date().getTime() + '|' + img;
+  let newVal: string = raw.length > 0 ? raw + ',' + entry : entry;
+  const parts: string[] = newVal.split(',');
+  if (parts.length > 100) {
+    let trimmed: string = '';
+    for (let i = parts.length - 100; i < parts.length; i++) {
+      if (trimmed.length > 0) trimmed = trimmed + ',';
+      trimmed = trimmed + parts[i];
+    }
+    newVal = trimmed;
+  }
+  AppStorage.set(key, newVal);
+}
+```
+**功能**: 将中奖记录保存到AppStorage（应用级持久化存储）。格式为`时间戳|图片路径`，多条用逗号分隔。最多保留100条，超出时删除最早的记录。这样转盘和刮刮乐共用同一份历史记录。
+
+#### 1.16 newCard - 再来一张
+```typescript
+newCard(): void {
+  this.initCard();
+}
+```
+**功能**: 点击"再来一张"按钮时重新初始化卡片。
+
+#### 1.17 build - UI构建
+```typescript
+build() {
+  Column() {
+    // Title
+    Text('🎫 刮刮乐')
+      .fontSize(24)
+      .fontColor('#FFFFFF')
+      .fontWeight(700)
+      .margin({ top: 12, bottom: 8 })
+
+    Text(this.isRevealed ? '恭喜中奖！' : '手指刮开涂层看看手气')
+      .fontSize(14)
+      .fontColor('rgba(255,255,255,0.5)')
+      .margin({ bottom: 16 })
+```
+**功能**: 页面标题"🎫 刮刮乐"（白色大字号加粗），副标题根据是否揭开发化（未刮开显示"手指刮开涂层看看手气"，已揭开显示"恭喜中奖！"）。
+
+```typescript
+    // Card Canvas
+    Canvas(this.canvasContext)
+      .layoutWeight(1)
+      .width('100%')
+      .onReady(() => {
+        if (!this.canvasInitialized) {
+          this.canvasInitialized = true;
+          this.initCard();
+        } else {
+          this.drawCard();
+        }
+      })
+      .onTouch((event: TouchEvent) => {
+        this.onTouchHandler(event);
+      })
+```
+**功能**: 
+- Canvas组件绑定canvasContext，宽度100%，`layoutWeight(1)`占满剩余空间
+- `onReady`: Canvas组件首次初始化时调用`initCard()`，后续触发的onReady（如切换Tab回来）只调用`drawCard()`防止状态丢失。`canvasInitialized`标志位防止重复初始化。
+- `onTouch`: 将触摸事件交给`onTouchHandler`处理刮擦逻辑
+
+```typescript
+    // Celebration overlay
+    if (this.isRevealed) {
+      Column() {
+        Text('🎉 恭喜中奖 🎉')
+          .fontSize(24)
+          .fontColor('#FFD700')
+          .fontWeight(700)
+          .margin({ bottom: 8 })
+        Text(this.getPrizeEmoji())
+          .fontSize(64)
+          .margin({ bottom: 8 })
+        Text(this.getPrizeString())
+          .fontSize(16)
+          .fontColor('#FFFFFF')
+          .fontWeight(600)
+        Text('✨ 🌟 ✨')
+          .fontSize(20)
+          .margin({ top: 8 })
+      }
+      .width('70%')
+      .padding(20)
+      .backgroundColor('rgba(30,30,63,0.92)')
+      .borderRadius(16)
+      .border({ width: 1, color: 'rgba(255,215,0,0.4)' })
+      .hitTestBehavior(HitTestMode.None)
+      .alignItems(HorizontalAlign.Center)
+      .position({ x: '15%', y: '30%' })
+    }
+```
+**功能**: 揭开后显示的庆祝浮层。半透明深色背景、金色边框、圆角。显示"🎉 恭喜中奖 🎉"、奖品Emoji（64px）、奖品文字、装饰星星。使用`position`绝对定位在屏幕中央区域，`hitTestBehavior(HitTestMode.None)`让触摸事件穿透到下层。
+
+```typescript
+    // Bottom area
+    if (this.isRevealed) {
+      Button('再来一张')
+        .width(200)
+        .height(44)
+        .backgroundColor('#FFD700')
+        .fontColor('#1A1A2E')
+        .fontWeight(700)
+        .borderRadius(22)
+        .margin({ bottom: 16 })
+        .onClick(() => {
+          this.newCard();
+        })
+    } else {
+      Text(`已刮 ${this.scratchPercent}%`)
+        .fontSize(13)
+        .fontColor('rgba(255,255,255,0.3)')
+        .margin({ bottom: 16 })
+    }
+  }
+  .width(StyleConstants.FULL_PERCENT)
+  .height(StyleConstants.FULL_PERCENT)
+}
+```
+**功能**: 底部区域：未揭开时显示"已刮 X%"进度文字；揭开后显示金色"再来一张"按钮（圆角胶囊形），点击重新开始新一轮刮卡。
+
+---
+
+## 2. 抽奖记录 (HistoryView.ets)
+
+**文件路径**: `entry/src/main/ets/view/HistoryView.ets`
+
+### 功能说明
+
+自动记录所有抽奖和刮刮乐的结果。以时间倒序列表展示每次结果（Emoji + 中奖状态 + 时间），统计总次数和中奖率，支持清空记录。
+
+### 代码详解
+
+#### 2.1 导入模块与类型定义
+```typescript
+import Logger from '../common/utils/Logger';
+import StyleConstants from '../common/constants/StyleConstants';
+import CommonConstants from '../common/constants/CommonConstants';
+
+interface HistoryRow {
+  emoji: string;
+  isWin: boolean;
+  timeText: string;
+}
+```
+**功能**: `HistoryRow`定义一条历史记录的数据结构：Emoji图标、是否中奖、时间字符串。
+
+#### 2.2 工具函数
+```typescript
+function getEmoji(img: string): string {
+  if (img === CommonConstants.WATERMELON_IMAGE_URL) return '🍉';
+  if (img === CommonConstants.HAMBURG_IMAGE_URL) return '🍔';
+  if (img === CommonConstants.CAKE_IMAGE_URL) return '🎂';
+  if (img === CommonConstants.SMILE_IMAGE_URL) return '😊';
+  return '🎁';
+}
+
+function isWin(img: string): boolean {
+  return img !== CommonConstants.SMILE_IMAGE_URL;
+}
+
+function formatTime(ts: string): string {
+  try {
+    const num: number = parseInt(ts, 10);
+    const d: Date = new Date(num);
+    const h: string = ('0' + d.getHours()).slice(-2);
+    const m: string = ('0' + d.getMinutes()).slice(-2);
+    return h + ':' + m;
+  } catch (_e) {
+    return ts;
+  }
+}
+```
+**功能**:
+- **getEmoji**: 根据图片路径返回对应Emoji字符
+- **isWin**: 判断是否中奖——笑脸(SMILE)视为"未中奖"，其他奖品视为"中奖"
+- **formatTime**: 将时间戳字符串格式化为"时:分"格式（两位数补零），解析失败时返回原始字符串
+
+#### 2.3 组件定义
+```typescript
+@Component
+export default struct HistoryView {
+  @State records: HistoryRow[] = [];
+  @State statsText: string = '';
+```
+**功能**: 两个@State变量驱动UI更新：`records`存储历史记录数组，`statsText`存储统计文字。
+
+#### 2.4 aboutToAppear / onPageShow
+```typescript
+aboutToAppear(): void {
+  this.loadHistory();
+}
+
+onPageShow(): void {
+  this.loadHistory();
+}
+```
+**功能**: 组件首次创建时和每次页面显示时都加载历史记录。`onPageShow`保证从其他Tab切换回来时数据是最新的。
+
+#### 2.5 loadHistory - 加载历史记录
+```typescript
+loadHistory(): void {
+  this.records = [];
+  let total: number = 0;
+  let wins: number = 0;
+
+  const raw: string = AppStorage.get<string>('wheel_history') || '';
+  if (raw.length > 0) {
+    const parts: string[] = raw.split(',');
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const entry: string[] = parts[i].split('|');
+      if (entry.length >= 2) {
+        const ts: string = entry[0];
+        const img: string = entry[1];
+        const row: HistoryRow = {
+          emoji: getEmoji(img),
+          isWin: isWin(img),
+          timeText: formatTime(ts),
+        };
+        this.records.push(row);
+        total++;
+        if (isWin(img)) wins++;
+      }
+    }
+  }
+
+  const winRate: number = total > 0 ? Math.round((wins / total) * 100) : 0;
+  this.statsText = '共 ' + total + ' 次 · 中奖率 ' + winRate + '%';
+}
+```
+**功能**: 
+1. 从AppStorage读取`wheel_history`（格式：`时间戳|图片路径,时间戳|图片路径,...`）
+2. 用逗号分割每条记录，用竖线分割时间和图片
+3. **倒序遍历**实现时间倒序排列（最新的在前面）
+4. 统计总次数和中奖次数，计算中奖率（百分比取整）
+5. 拼接统计文字如"共 10 次 · 中奖率 60%"
+
+#### 2.6 clearHistory - 清空记录
+```typescript
+clearHistory(): void {
+  AppStorage.set('wheel_history', '');
+  this.records = [];
+  this.statsText = '暂无记录';
+}
+```
+**功能**: 清空AppStorage中的记录，重置UI状态。
+
+#### 2.7 build - UI构建
+```typescript
+build() {
+  Column() {
+    Text('📊 抽奖记录')
+      .fontSize(22).fontColor('#FFFFFF').fontWeight(700)
+      .margin({ top: 24, bottom: 4 })
+
+    Text(this.statsText)
+      .fontSize(14).fontColor('rgba(255,255,255,0.5)')
+      .margin({ bottom: 16 })
+```
+**功能**: 页面标题"📊 抽奖记录" + 统计文字（白色半透明）。
+
+```typescript
+    if (this.records.length === 0) {
+      Column() {
+        Text('🎯').fontSize(48).margin({ bottom: 12 })
+        Text('还没有抽奖记录').fontSize(16).fontColor('rgba(255,255,255,0.4)')
+        Text('去转盘或老虎机试试手气吧！').fontSize(14).fontColor('rgba(255,255,255,0.3)')
+      }
+      .layoutWeight(1)
+      .justifyContent(FlexAlign.Center)
+      .alignItems(HorizontalAlign.Center)
+```
+**功能**: 没有记录时显示空状态：大号Emoji + 提示文字，垂直水平居中。
+
+```typescript
+    } else {
+      List({ space: 8 }) {
+        ForEach(this.records, (item: HistoryRow) => {
+          ListItem() {
+            Row({ space: 12 }) {
+              Text(item.emoji).fontSize(32)
+
+              Column({ space: 4 }) {
+                Text(item.isWin ? '🎉 中奖' : '😅 未中奖')
+                  .fontSize(15)
+                  .fontColor(item.isWin ? '#FFD700' : 'rgba(255,255,255,0.6)')
+                  .fontWeight(600)
+                Text(item.timeText).fontSize(12).fontColor('rgba(255,255,255,0.3)')
+              }
+              .alignItems(HorizontalAlign.Start)
+              .layoutWeight(1)
+
+              if (item.isWin) {
+                Text('✨').fontSize(16)
+              }
+            }
+            .padding(12)
+            .backgroundColor('rgba(255,255,255,0.05)')
+            .borderRadius(10)
+          }
+        }, (item: HistoryRow) => item.timeText + item.emoji)
+      }
+      .layoutWeight(1)
+      .width('100%')
+      .padding({ left: 16, right: 16 })
+```
+**功能**: 有记录时显示List列表，每条记录是一个ListItem：
+- 左侧：奖品Emoji（32px）
+- 中间：中奖状态（金色"🎉 中奖"或灰色"😅 未中奖"）+ 时间
+- 右侧：中奖时显示"✨"装饰
+- 列表项有半透明背景和圆角
+- `ForEach`的第三个参数是key生成器，用`timeText+emoji`作为唯一标识
+
+```typescript
+      Button('清空记录')
+        .width(160).height(40)
+        .backgroundColor('rgba(255,255,255,0.1)')
+        .fontColor('rgba(255,255,255,0.5)')
+        .borderRadius(20)
+        .margin({ bottom: 20 })
+        .onClick(() => { this.clearHistory(); })
+    }
+  }
+  .width(StyleConstants.FULL_PERCENT)
+  .height(StyleConstants.FULL_PERCENT)
+}
+```
+**功能**: 底部"清空记录"按钮（半透明白色胶囊形），点击后清除所有历史记录。
+
+---
+
+## 3. 彩纸庆祝动画 (ConfettiEffect.ets)
+
+**文件路径**: `entry/src/main/ets/view/ConfettiEffect.ets`
+
+### 功能说明
+
+中奖时全屏播放彩色粒子庆祝动画。生成80个随机彩色粒子（圆形+矩形混合），从屏幕中央向四周飞散，受"重力"影响下落，逐渐淡出消失。
+
+### 代码详解
+
+#### 3.1 Particle接口
+```typescript
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  color: string;
+  life: number;
+  maxLife: number;
+  rotation: number;
+  rotSpeed: number;
+  isRect: boolean;
+}
+```
+**功能**: 粒子数据结构定义：
+- **x/y**: 当前位置坐标
+- **vx/vy**: 水平和垂直速度
+- **size**: 粒子尺寸
+- **color**: 颜色
+- **life/maxLife**: 当前生命值 / 最大生命值，用于淡出效果
+- **rotation/rotSpeed**: 旋转角度 / 旋转速度（只有矩形会旋转）
+- **isRect**: true为矩形，false为圆形
+
+#### 3.2 组件定义
+```typescript
+@Component
+export default struct ConfettiEffect {
+  private particleContext: CanvasRenderingContext2D = new CanvasRenderingContext2D();
+  private particles: Particle[] = [];
+  private animTimer: number = -1;
+  private canvasWidth: number = 500;
+  private canvasHeight: number = 800;
+
+  private colors: string[] = [
+    '#FF6B9D', '#C44AFF', '#FFD93D', '#FF9A56',
+    '#00D2FF', '#3A7BD5', '#FFD700', '#FF4500',
+    '#00FF7F', '#FF1493'
+  ];
+```
+**功能**: 10种鲜艳颜色（粉、紫、黄、橙、蓝、金、红、绿），canvas默认宽高500x800。
+
+#### 3.3 trigger - 触发彩纸
+```typescript
+trigger(): void {
+  this.particles = [];
+  for (let i = 0; i < 80; i++) {
+    const angle: number = Math.random() * Math.PI * 2;
+    const speed: number = Math.random() * 8 + 3;
+    const p: Particle = {
+      x: this.canvasWidth / 2 + (Math.random() - 0.5) * 100,
+      y: this.canvasHeight / 2,
+      vx: Math.cos(angle) * speed * (0.5 + Math.random()),
+      vy: Math.sin(angle) * speed * (0.5 + Math.random()) - 3,
+      size: Math.random() * 8 + 4,
+      color: this.colors[Math.floor(Math.random() * this.colors.length)],
+      life: 1,
+      maxLife: Math.random() * 60 + 60,
+      rotation: Math.random() * 360,
+      rotSpeed: (Math.random() - 0.5) * 10,
+      isRect: Math.random() > 0.5,
+    };
+    this.particles.push(p);
+  }
+  if (this.animTimer > 0) clearTimeout(this.animTimer);
+  this.animate();
+}
+```
+**功能**: 生成80个粒子：
+- 位置从屏幕中央附近随机偏移（x偏移±50px）
+- 方向：`angle = random * 2π`，向360°任意方向飞散
+- 速度：基础速度3-11，每个方向分量再乘`(0.5 + random)`增加随机性
+- **vy减3**：整体向上偏移，形成"爆发"效果
+- 形状：50%概率矩形，50%概率圆形
+- 生命期：60-120帧（约1-2秒）
+- 清除之前正在播放的动画定时器后启动动画
+
+#### 3.4 animate - 动画循环
+```typescript
+animate(): void {
+  const ctx: CanvasRenderingContext2D = this.particleContext;
+  let frame: number = 0;
+
+  const loop = (): void => {
+    ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+    frame++;
+    let alive: boolean = false;
+```
+**功能**: 使用`setTimeout`模拟动画循环（ArkTS不支持requestAnimationFrame）。`frame`控制最大帧数200（约3.2秒），`alive`跟踪是否还有存活粒子。
+
+```typescript
+    for (let i = 0; i < this.particles.length; i++) {
+      const p: Particle = this.particles[i];
+      if (p.life <= 0) continue;
+      alive = true;
+      p.x += p.vx;
+      p.vy += 0.15;     // 重力
+      p.y += p.vy;
+      p.rotation += p.rotSpeed;
+      p.life -= 1 / p.maxLife;
+      const alpha: number = Math.max(0, p.life);
+```
+**功能**: 每帧更新每个粒子：
+- `p.x += p.vx`: 水平移动
+- `p.vy += 0.15`: 模拟重力，使垂直速度逐渐增加（向下加速）
+- `p.y += p.vy`: 垂直移动
+- `p.rotation += p.rotSpeed`: 旋转
+- `p.life -= 1/maxLife`: 生命值递减
+- `alpha = max(0, life)`: 透明度随生命值降低
+
+```typescript
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(p.x, p.y);
+      ctx.rotate((p.rotation * Math.PI) / 180);
+      ctx.fillStyle = p.color;
+
+      if (p.isRect) {
+        ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+      } else {
+        ctx.beginPath();
+        ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+```
+**功能**: 绘制每个粒子：
+- 保存画布状态
+- 设置全局透明度实现淡出
+- 平移到粒子位置并旋转
+- 矩形粒子：绘制扁平矩形（宽高比2:1）
+- 圆形粒子：绘制完整圆形
+- 恢复画布状态
+
+```typescript
+    ctx.globalAlpha = 1;
+
+    if (alive && frame < 200) {
+      this.animTimer = setTimeout(loop, 16);
+    } else {
+      ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+    }
+  };
+
+  this.animTimer = setTimeout(loop, 16);
+}
+```
+**功能**: 如果还有存活粒子且未超过200帧，继续下一帧（16ms间隔≈60fps）。否则清除画布结束动画。
+
+#### 3.5 生命周期与UI
+```typescript
+aboutToDisappear(): void {
+  if (this.animTimer > 0) clearTimeout(this.animTimer);
+}
+
+build() {
+  Canvas(this.particleContext)
+    .width('100%')
+    .height('100%')
+    .hitTestBehavior(HitTestMode.None)
+}
+```
+**功能**: 组件销毁时清除定时器防止内存泄漏。Canvas全屏覆盖且`hitTestBehavior(None)`让触摸事件穿透。
+
+---
+
+## 4. 星空粒子背景 (StarParticle.ets)
+
+**文件路径**: `entry/src/main/ets/view/StarParticle.ets`
+
+### 功能说明
+
+在页面背景层动态绘制闪烁的星星粒子。40颗星星以不同速度、不同频率呼吸闪烁，营造星空沉浸效果。
+
+### 代码详解
+
+#### 4.1 Star接口与组件
+```typescript
+interface Star {
+  x: number;
+  y: number;
+  size: number;
+  alpha: number;
+  speed: number;
+  phase: number;
+}
+```
+**功能**: 星星数据结构：位置、大小、基础透明度、闪烁速度、相位偏移。
+
+#### 4.2 aboutToAppear - 初始化并启动
+```typescript
+aboutToAppear(): void {
+  this.initStars();
+  this.startAnimation();
+}
+```
+**功能**: 组件创建时初始化星星并启动动画。
+
+#### 4.3 initStars - 初始化星星
+```typescript
+initStars(): void {
+  this.stars = [];
+  for (let i = 0; i < 40; i++) {
+    const s: Star = {
+      x: Math.random() * 500,
+      y: Math.random() * 800,
+      size: Math.random() * 2.5 + 0.5,
+      alpha: Math.random() * 0.6 + 0.2,
+      speed: Math.random() * 0.2 + 0.05,
+      phase: Math.random() * Math.PI * 2,
+    };
+    this.stars.push(s);
+  }
+}
+```
+**功能**: 生成40颗星星：
+- 位置：在500×800范围内随机分布
+- 大小：0.5-3.0（小星星更自然）
+- 基础透明度：0.2-0.8
+- 速度：0.05-0.25（控制闪烁频率）
+- 相位：0-2π，让星星不同步闪烁
+
+#### 4.4 startAnimation - 动画循环
+```typescript
+startAnimation(): void {
+  const animate = (): void => {
+    const ctx: CanvasRenderingContext2D = this.starCanvasContext;
+    const now: number = Date.now() / 1000;
+
+    ctx.clearRect(0, 0, 500, 800);
+
+    for (let i = 0; i < this.stars.length; i++) {
+      const star: Star = this.stars[i];
+      const pulse: number = Math.sin(now * star.speed + star.phase) * 0.3 + 0.7;
+      const a: number = star.alpha * pulse;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = ColorConstants.STAR_COLOR;
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    this.animTimer = setTimeout(animate, 33);
+  };
+
+  this.animTimer = setTimeout(animate, 33);
+}
+```
+**功能**: 
+- 用`Date.now()/1000`获取当前秒数作为时间基准
+- `Math.sin(now * speed + phase) * 0.3 + 0.7`：正弦波生成0.4-1.0的脉冲因子，使星星柔和闪烁
+- 最终透明度 = 基础透明度 × 脉冲因子
+- 以33ms间隔（≈30fps）持续运行，永不停止
+
+#### 4.5 UI
+```typescript
+build() {
+  Canvas(this.starCanvasContext)
+    .width('100%')
+    .height('100%')
+    .hitTestBehavior(HitTestMode.None)
+}
+```
+**功能**: 全屏Canvas覆盖层，触摸穿透，作为背景装饰。
+
+---
+
+## 5. 转盘改进 (WheelView.ets)
+
+**文件路径**: `entry/src/main/ets/view/WheelView.ets`
+
+### 功能说明
+
+由原来CanvasPage中的内联代码重构为独立组件。新增连抽模式（3次/5次）、按钮呼吸动效、语言切换监听、中奖记录保存、彩纸庆祝触发等功能。
+
+### 代码详解
+
+#### 5.1 getEmoji工具函数
+```typescript
+function getEmoji(img: string): string {
+  if (img === CommonConstants.WATERMELON_IMAGE_URL) return '🍉';
+  if (img === CommonConstants.HAMBURG_IMAGE_URL) return '🍔';
+  if (img === CommonConstants.CAKE_IMAGE_URL) return '🎂';
+  if (img === CommonConstants.SMILE_IMAGE_URL) return '😊';
+  return '🎁';
+}
+```
+**功能**: 根据奖品图片路径返回对应Emoji，用于连抽结果汇总展示。
+
+#### 5.2 组件状态
+```typescript
+@Component
+export default struct WheelView {
+  private settings: RenderingContextSettings = new RenderingContextSettings(true);
+  private canvasContext: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
+  private drawModel: DrawModel = new DrawModel();
+  @State screenWidth: number = 0;
+  @State screenHeight: number = 0;
+  @State rotateDegree: number = 0;
+  @State enableFlag: boolean = true;
+  @State prizeData: PrizeData = new PrizeData();
+  @State confettiKey: number = 0;
+  @State btnScale: number = 1.0;
+  @State multiMode: number = 0;
+  @State multiRemaining: number = 0;
+  @State multiResults: string[] = [];
+  @State showSummary: boolean = false;
+  @State summaryText: string = '';
+```
+**新增状态说明**:
+- **confettiKey**: 彩纸触发器key，每次变化重新创建ConfettiEffect组件
+- **btnScale**: 按钮缩放比例（1.0→1.08→0.95循环），用于呼吸动效
+- **multiMode/multiRemaining**: 连抽模式（3或5）和剩余次数
+- **multiResults**: 连抽结果数组
+- **showSummary/summaryText**: 连抽汇总弹窗显隐和内容
+
+#### 5.3 aboutToAppear - 初始化和语言监听
+```typescript
+aboutToAppear(): void {
+  window.getLastWindow(context)
+    .then((windowClass: window.Window) => {
+      windowClass.setWindowLayoutFullScreen(true);
+      const wp = windowClass.getWindowProperties();
+      this.screenWidth = this.getUIContext().px2vp(wp.windowRect.width);
+      this.screenHeight = this.getUIContext().px2vp(wp.windowRect.height);
+    })
+    .catch((error: Error) => {
+      Logger.error('Failed window size: ' + JSON.stringify(error));
+    });
+
+  const subscribeInfo: commonEventManager.CommonEventSubscribeInfo = {
+    events: [commonEventManager.Support.COMMON_EVENT_LOCALE_CHANGED]
+  };
+  commonEventManager.createSubscriber(subscribeInfo)
+    .then((sub) => {
+      this.subscriber = sub;
+      commonEventManager.subscribe(this.subscriber, (err) => {
+        if (err) { Logger.error(`Locale error: ${err.code}`); return; }
+        this.currentLang = i18n.System.getSystemLanguage();
+      });
+    })
+    .catch((err: BusinessError) => {
+      Logger.error(`CreateSubscriber failed: ${err.code}`);
+    });
+
+  this.startBreathing();
+}
+```
+**功能**: 
+1. 获取屏幕尺寸并设置全屏
+2. 订阅系统语言切换事件（COMMON_EVENT_LOCALE_CHANGED），语言变化时重新绘制转盘更新文字
+3. 启动按钮呼吸动画
+
+#### 5.4 startBreathing - 按钮呼吸动效
+```typescript
+startBreathing(): void {
+  const animate = (): void => {
+    const ctx = this.getUIContext();
+    if (!ctx) { this.breatheTimer = setTimeout(animate, 200); return; }
+    ctx.animateTo({ duration: 1000, curve: Curve.EaseInOut }, () => { this.btnScale = 1.08; });
+    setTimeout(() => {
+      ctx.animateTo({ duration: 1000, curve: Curve.EaseInOut }, () => { this.btnScale = 0.95; });
+    }, 1000);
+    this.breatheTimer = setTimeout(animate, 2100);
+  };
+  animate();
+}
+```
+**功能**: 使用`animateTo`显式动画让中心按钮在"放大1.08倍→缩小0.95倍"之间循环，每个周期2.1秒。EaseInOut曲线使缩放更自然柔和。
+
+#### 5.5 页面显示/隐藏
+```typescript
+onPageShow(): void {
+  if (this.lastLang !== this.currentLang) {
+    this.drawModel.draw(this.canvasContext, this.screenWidth, this.screenHeight);
+  }
+}
+onPageHide(): void { this.lastLang = i18n.System.getSystemLanguage(); }
+```
+**功能**: 页面显示时检测语言是否变化，变化则重新绘制转盘。隐藏时记录当前语言。
+
+#### 5.6 spinOnce - 单次抽奖
+```typescript
+spinOnce(): PrizeData {
+  const angle = Math.round(Math.random() * CommonConstants.CIRCLE);
+  this.prizeData = this.drawModel.showPrizeData(angle);
+
+  this.getUIContext().animateTo({
+    duration: CommonConstants.DURATION,
+    curve: Curve.Ease,
+    onFinish: () => {
+      this.rotateDegree = CommonConstants.ANGLE - angle;
+      this.onSpinFinished();
+    }
+  }, () => {
+    this.rotateDegree = CommonConstants.CIRCLE * CommonConstants.FIVE
+      + CommonConstants.ANGLE - angle;
+  });
+  return this.prizeData;
+}
+```
+**功能**: 
+1. 生成0-360随机角度，根据角度确定奖品
+2. 启动animateTo动画：转盘旋转5整圈（1800°）+ 270° - 随机角度
+3. `Curve.Ease`缓动曲线：开始和结束慢、中间快
+4. `onFinish`回调：记录最终角度、调用`onSpinFinished()`处理结果
+
+#### 5.7 onSpinFinished - 抽奖结束处理
+```typescript
+onSpinFinished(): void {
+  this.addHistory(this.prizeData);
+
+  if (this.multiMode > 0 && this.multiRemaining > 0) {
+    this.multiRemaining--;
+    this.multiResults.push(this.prizeData.imageSrc || '');
+    if (this.multiRemaining <= 0) {
+      this.showMultiSummary();
+      return;
+    }
+    setTimeout(() => {
+      this.enableFlag = false;
+      this.spinOnce();
+    }, 800);
+  } else {
+    this.multiResults.push(this.prizeData.imageSrc || '');
+    this.triggerConfetti();
+    this.dialogController.open();
+    this.enableFlag = true;
+  }
+}
+```
+**功能**: 抽奖结束时的分支逻辑：
+- **连抽模式**: 减少剩余次数、记录结果；如果还有剩余次数，800ms后自动开始下一次旋转；全部完成则显示汇总
+- **单次模式**: 触发彩纸庆祝、打开中奖弹窗、恢复按钮可点击
+
+#### 5.8 showMultiSummary - 连抽汇总
+```typescript
+showMultiSummary(): void {
+  const imgKeys: string[] = [];
+  const imgCounts: number[] = [];
+  const imgEmojis: string[] = [];
+
+  for (let i = 0; i < this.multiResults.length; i++) {
+    const img = this.multiResults[i];
+    let found = -1;
+    for (let j = 0; j < imgKeys.length; j++) {
+      if (imgKeys[j] === img) {
+        found = j;
+        break;
+      }
+    }
+    if (found >= 0) {
+      imgCounts[found]++;
+    } else {
+      imgKeys.push(img);
+      imgCounts.push(1);
+      imgEmojis.push(getEmoji(img));
+    }
+  }
+
+  let text: string = '🎉 抽奖 ' + this.multiMode + ' 次结果\n';
+  for (let i = 0; i < imgKeys.length; i++) {
+    text = text + imgEmojis[i] + ' × ' + imgCounts[i] + '\n';
+  }
+  this.summaryText = text;
+  this.showSummary = true;
+  this.enableFlag = true;
+  this.multiResults = [];
+  this.triggerConfetti();
+}
+```
+**功能**: 使用并行数组（imgKeys/imgCounts/imgEmojis）手动统计每种奖品出现次数（ArkTS不支持Map对象）。拼接汇总文字如"🎉 抽奖 3 次结果\n🍉 × 1\n🍔 × 2"，显示汇总弹窗并触发彩纸。
+
+#### 5.9 addHistory - 保存历史记录
+```typescript
+addHistory(prize: PrizeData): void {
+  const key: string = 'wheel_history';
+  const raw: string = AppStorage.get<string>(key) || '';
+  const img: string = prize.imageSrc || '';
+  const entry: string = '' + new Date().getTime() + '|' + img;
+  let newVal: string = entry;
+  if (raw.length > 0) {
+    newVal = raw + ',' + entry;
+  }
+  // Keep only last 100 entries
+  const parts: string[] = newVal.split(',');
+  if (parts.length > 100) {
+    let trimmed: string = '';
+    for (let i = parts.length - 100; i < parts.length; i++) {
+      if (trimmed.length > 0) trimmed = trimmed + ',';
+      trimmed = trimmed + parts[i];
+    }
+    newVal = trimmed;
+  }
+  AppStorage.set(key, newVal);
+}
+```
+**功能**: 与ScratchCardView相同的历史记录保存逻辑，共用`wheel_history`键，格式一致。保留最近100条记录。
+
+#### 5.10 build - UI构建
+```typescript
+build() {
+  Stack({ alignContent: Alignment.Center }) {
+    Canvas(this.canvasContext)
+      .width(StyleConstants.FULL_PERCENT)
+      .height(StyleConstants.FULL_PERCENT)
+      .onReady(() => {
+        this.drawModel.draw(this.canvasContext, this.screenWidth, this.screenHeight);
+      })
+      .rotate({
+        x: 0, y: 0, z: 1, angle: this.rotateDegree,
+        centerX: this.screenWidth / CommonConstants.TWO,
+        centerY: this.screenHeight / CommonConstants.TWO,
+      })
+```
+**功能**: Canvas转盘，`rotate`属性绑定`rotateDegree`驱动旋转动画，旋转中心为屏幕中心。
+
+```typescript
+    Image($r('app.media.ic_center'))
+      .width(StyleConstants.CENTER_IMAGE_WIDTH)
+      .height(StyleConstants.CENTER_IMAGE_HEIGHT)
+      .scale({ x: this.btnScale, y: this.btnScale })
+      .enabled(this.enableFlag)
+      .onClick(() => { this.startSingle(); })
+```
+**功能**: 中心按钮图片，`scale`绑定`btnScale`实现呼吸缩放动效，`enabled`绑定`enableFlag`防止重复点击。
+
+```typescript
+    if (this.enableFlag && !this.showSummary) {
+      Row({ space: 12 }) {
+        Button('抽 1 次')
+          .fontColor('#FFFFFF').backgroundColor('rgba(255,255,255,0.15)')
+          .onClick(() => { this.startSingle(); })
+        Button('连抽 3 次')
+          .fontColor('#FFFFFF').backgroundColor('rgba(255,215,0,0.2)')
+          .onClick(() => { this.startMulti(3); })
+        Button('连抽 5 次')
+          .fontColor('#FFFFFF').backgroundColor('rgba(255,215,0,0.2)')
+          .onClick(() => { this.startMulti(5); })
+      }
+      .position({ x: 0, y: this.screenHeight - 200 })
+      .width('100%')
+      .justifyContent(FlexAlign.Center)
+    }
+```
+**功能**: 底部按钮栏固定在屏幕底部上方200px处。三个按钮：抽1次（灰色）、连抽3次（金色半透明）、连抽5次（金色半透明）。抽奖过程中隐藏。
+
+```typescript
+    if (this.multiMode > 0 && !this.showSummary) {
+      Text(`连抽中... (${this.multiMode - this.multiRemaining}/${this.multiMode})`)
+        .fontSize(13).fontColor('rgba(255,255,255,0.5)')
+        .position({ x: 0, y: this.screenHeight - 235 })
+        .width('100%').textAlign(TextAlign.Center)
+    }
+```
+**功能**: 连抽进行中的进度提示，如"连抽中... (2/3)"。
+
+```typescript
+    if (this.showSummary) {
+      Column() {
+        Text(this.summaryText)
+          .fontSize(18).fontColor('#FFD700').fontWeight(700)
+          .textAlign(TextAlign.Center).lineHeight(30)
+          .margin({ bottom: 20 })
+        Button('知道了')
+          .width(160).height(40)
+          .backgroundColor('#FFD700').fontColor('#1A1A2E')
+          .borderRadius(20).fontWeight(700)
+          .onClick(() => { this.showSummary = false; })
+      }
+      .padding(24)
+      .backgroundColor('rgba(30,30,63,0.95)')
+      .borderRadius(16)
+      .border({ width: 1, color: 'rgba(255,215,0,0.3)' })
+    }
+```
+**功能**: 连抽汇总弹窗，深色半透明背景、金色边框，显示每种奖品的中奖次数。
+
+```typescript
+    if (this.confettiKey > 0) {
+      ConfettiEffect()
+        .width(StyleConstants.FULL_PERCENT)
+        .height(StyleConstants.FULL_PERCENT)
+        .hitTestBehavior(HitTestMode.None)
+    }
+  }
+  .width(StyleConstants.FULL_PERCENT)
+  .height(StyleConstants.FULL_PERCENT)
+  .clip(false)
+}
+```
+**功能**: `confettiKey > 0`时渲染CelebrationEffect组件，每次key变化重新创建实例触发新动画。`clip(false)`防止转盘旋转时被父容器裁切。
+
+---
+
+## 6. 中奖弹窗改进 (PrizeDialog.ets)
+
+**文件路径**: `entry/src/main/ets/view/PrizeDialog.ets`
+
+### 功能说明
+
+与第一版相比，改用Emoji替代图片资源加载（更可靠），新增入场缩放+淡入动画，优化视觉样式。
+
+### 代码详解
+
+#### 6.1 工具函数
+```typescript
+function getPrizeEmoji(img: string): string {
+  if (img === CommonConstants.WATERMELON_IMAGE_URL) return '🍉';
+  if (img === CommonConstants.HAMBURG_IMAGE_URL) return '🍔';
+  if (img === CommonConstants.CAKE_IMAGE_URL) return '🎂';
+  return '😊';
+}
+
+function getPrizeMessage(msg: Resource | undefined): string {
+  if (msg === undefined) return '🎉 恭喜中奖！';
+  const ctx: UIContext | undefined = AppStorage.get('uiContext');
+  if (ctx === undefined) return '🎉 恭喜中奖！';
+  try {
+    return ctx.getHostContext()!.resourceManager.getStringSync(msg.id);
+  } catch (_e) {
+    return '🎉 恭喜中奖！';
+  }
+}
+```
+**功能**: 
+- `getPrizeEmoji`: 根据图片路径返回对应Emoji
+- `getPrizeMessage`: 从资源管理器获取奖品的本地化描述文字，多层防御性编程防止空指针
+
+#### 6.2 组件定义与入场动画
+```typescript
+@CustomDialog
+export default struct PrizeDialog {
+  @Link prizeData: PrizeData;
+  @Link enableFlag: boolean;
+  private controller?: CustomDialogController;
+  @State animScale: number = 0;
+  @State animOpacity: number = 0;
+
+  aboutToAppear(): void {
+    this.animScale = 0;
+    this.animOpacity = 0;
+    setTimeout(() => {
+      this.getUIContext()?.animateTo({
+        duration: 400,
+        curve: Curve.Friction,
+      }, () => {
+        this.animScale = 1;
+        this.animOpacity = 1;
+      });
+    }, 50);
+  }
+```
+**功能**: 入场时动画（延迟50ms启动）：
+- 初始状态：`scale=0`（不可见）、`opacity=0`（透明）
+- 动画目标：`scale=1`、`opacity=1`
+- `Curve.Friction`摩擦力曲线：开始时快速弹出，结束时摩擦减速，模拟弹性效果
+
+#### 6.3 UI构建
+```typescript
+build() {
+  Column() {
+    // Prize emoji (replaces Image for reliable rendering)
+    Text(getPrizeEmoji(this.prizeData.imageSrc !== undefined ? this.prizeData.imageSrc : ''))
+      .fontSize(72)
+      .margin({ top: 20, bottom: 8 })
+
+    // Prize message
+    Text(getPrizeMessage(this.prizeData.message))
+      .fontSize(22)
+      .fontColor('#FFD700')
+      .fontWeight(700)
+      .textAlign(TextAlign.Center)
+      .margin({ bottom: 8 })
+
+    // Sparkle divider
+    Text('✨ ✨ ✨')
+      .fontSize(16)
+      .margin({ bottom: 12 })
+
+    // Confirm button
+    Text($r('app.string.text_confirm'))
+      .fontColor($r('app.color.text_font_color'))
+      .fontWeight(StyleConstants.FONT_WEIGHT)
+      .fontSize(18)
+      .textAlign(TextAlign.Center)
+      .padding({ left: 40, right: 40, top: 10, bottom: 10 })
+      .borderRadius(20)
+      .border({ width: 1, color: '#FFD700' })
+      .onClick(() => {
+        this.controller?.close();
+        this.enableFlag = true;
+      })
+      .margin({ bottom: 16 })
+  }
+  .backgroundColor('#1E1E3F')
+  .borderRadius(20)
+  .border({ width: 1, color: 'rgba(255,215,0,0.3)' })
+  .width(280)
+  .scale({ x: this.animScale, y: this.animScale })
+  .opacity(this.animOpacity)
+}
+```
+**功能**: 
+- **奖品Emoji**: 72px超大字体替代图片（更可靠，无需加载资源）
+- **奖品文字**: 金色22px加粗
+- **装饰分隔线**: "✨ ✨ ✨"增加视觉层次
+- **确认按钮**: 圆角文字按钮，金色边框，点击关闭弹窗并恢复转盘可点击状态
+- **弹窗容器**: 深色背景、圆角、金色边框、280px宽。`scale`和`opacity`绑定动画状态变量
+
+---
+
+## 7. 绘图逻辑改进 (DrawModel.ets)
+
+**文件路径**: `entry/src/main/ets/viewmodel/DrawModel.ets`
+
+### 功能说明
+
+与第一版相比完全重写。删除花瓣和外圈小圆点，新增：径向渐变扇形（取代纯色）、外圈发光环、金色装饰旋转环、内圈辉光、中心按钮光晕、Emoji绘制（替代ImageBitmap）。布局全部重调适配暗色主题。
+
+### 代码详解
+
+#### 7.1 draw - 主绘制方法
+```typescript
+draw(canvasContext: CanvasRenderingContext2D, screenWidth: number, screenHeight: number): void {
+  if (CheckEmptyUtils.isEmptyObj(canvasContext)) {
+    Logger.error('[DrawModel][draw] canvasContext is empty.');
+    return;
+  }
+  this.canvasContext = canvasContext;
+  this.screenWidth = screenWidth;
+  this.canvasContext.clearRect(0, 0, this.screenWidth, screenHeight);
+  this.canvasContext.translate(this.screenWidth / CommonConstants.TWO,
+    screenHeight / CommonConstants.TWO);
+
+  this.drawInnerArc();       // Gradient fan sectors (full wheel)
+  this.drawArcText();        // White text with shadow
+  this.drawImage();          // Prize emoji
+
+  this.canvasContext.translate(-this.screenWidth / CommonConstants.TWO,
+    -screenHeight / CommonConstants.TWO);
+}
+```
+**功能**: 绘制流程简化，始终绘制：渐变扇形→弧形文字→奖品Emoji。注意：调用前需要先调用`drawOuterRing()`、`drawDecoRing()`、`drawInnerCircle()`、`drawCenterGlow()`（由外部在适当时机调用）。
+
+#### 7.2 fillGradientArc - 渐变扇形绘制（新增）
+```typescript
+fillGradientArc(fillArcData: FillArcData, color1: string, color2: string): void {
+  if (CheckEmptyUtils.isEmptyObj(fillArcData)) return;
+  const ctx = this.canvasContext;
+  if (ctx === undefined) return;
+  ctx.beginPath();
+  ctx.arc(fillArcData.x, fillArcData.y, fillArcData.radius,
+    fillArcData.startAngle, fillArcData.endAngle);
+  const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, fillArcData.radius);
+  gradient.addColorStop(0, color1);
+  gradient.addColorStop(1, color2);
+  ctx.fillStyle = gradient;
+  ctx.fill();
+}
+```
+**功能**: 第一版使用纯色填充，现在使用`createRadialGradient`创建径向渐变（从中心辐射）。每个扇区从color1渐变到color2，使转盘更有立体感。
+
+#### 7.3 drawOuterRing - 外圈辉光环（新增）
+```typescript
+drawOuterRing(): void {
+  const radius = this.screenWidth * CommonConstants.OUTER_RING_RATIOS;
+  // Glow layer
+  ctx.save();
+  ctx.shadowColor = ColorConstants.OUTER_RING_GLOW;
+  ctx.shadowBlur = CommonConstants.GLOW_BLUR;
+  this.fillArc(new FillArcData(0, 0, radius, 0, Math.PI * CommonConstants.TWO),
+    ColorConstants.OUTER_RING_COLOR);
+  ctx.restore();
+  // Main ring
+  this.fillArc(new FillArcData(0, 0, radius, 0, Math.PI * CommonConstants.TWO),
+    ColorConstants.OUTER_RING_COLOR);
+}
+```
+**功能**: 绘制外圈深蓝色环（带紫色辉光发光效果）。先绘制一层带`shadowBlur=20`的发光层，再绘制主环。`GLOW_BLUR=20`控制辉光扩散范围。
+
+#### 7.4 drawDecoRing - 金色装饰环（新增）
+```typescript
+drawDecoRing(): void {
+  const radius = this.screenWidth * CommonConstants.DECO_RING_RATIOS;
+  // Golden ring line
+  ctx.save();
+  ctx.beginPath();
+  ctx.strokeStyle = ColorConstants.DECO_RING_COLOR;
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = ColorConstants.DECO_RING_COLOR;
+  ctx.shadowBlur = 8;
+  ctx.arc(0, 0, radius, 0, Math.PI * CommonConstants.TWO);
+  ctx.stroke();
+  ctx.restore();
+```
+**功能**: 在外圈内部绘制金色细圆环，带金色发光效果。`lineWidth=1.5`细线更精致。
+
+```typescript
+  // Dots around the ring
+  let angle = 0;
+  const dotRadius = CommonConstants.DECO_DOT_RADIUS;
+  for (let i = 0; i < CommonConstants.DECO_RING_DOT_COUNT; i++) {
+    const rad = (angle * Math.PI) / CommonConstants.HALF_CIRCLE;
+    const dx = Math.cos(rad) * radius;
+    const dy = Math.sin(rad) * radius;
+    ctx.save();
+    ctx.shadowColor = ColorConstants.DECO_RING_DOT_COLOR;
+    ctx.shadowBlur = 6;
+    this.fillArc(new FillArcData(dx, dy, dotRadius, 0, Math.PI * CommonConstants.TWO),
+      i % 2 === 0 ? ColorConstants.DECO_RING_COLOR : ColorConstants.DECO_RING_DOT_COLOR);
+    ctx.restore();
+    angle += CommonConstants.CIRCLE / CommonConstants.DECO_RING_DOT_COUNT;
+  }
+}
+```
+**功能**: 在装饰环上均匀分布12个金色/橙色交替的小圆点，带辉光效果。通过`cos/sin`三角函数计算点在圆周上的位置。
+
+#### 7.5 drawInnerArc - 渐变扇形（改进）
+```typescript
+drawInnerArc(): void {
+  const radius = this.screenWidth * CommonConstants.INNER_ARC_RATIOS;
+  const colors1 = ColorConstants.SECTOR_COLOR1;
+  const colors2 = ColorConstants.SECTOR_COLOR2;
+  for (let i = 0; i < CommonConstants.COUNT; i++) {
+    this.fillGradientArc(
+      new FillArcData(0, 0, radius,
+        this.startAngle * Math.PI / CommonConstants.HALF_CIRCLE,
+        (this.startAngle + this.avgAngle) * Math.PI / CommonConstants.HALF_CIRCLE),
+      colors1[i], colors2[i]);
+    this.canvasContext?.lineTo(0, 0);
+    this.canvasContext?.fill();
+    this.startAngle += this.avgAngle;
+  }
+}
+```
+**功能**: 绘制6个扇形，使用径向渐变代替纯色。颜色从SECTOR_COLOR1渐变到SECTOR_COLOR2，每对颜色不同（粉色系→紫色系、橙色系→黄色系、蓝色系→青色系交替）。`lineTo(0,0)`确保扇形闭合到中心。
+
+#### 7.6 drawArcText / drawCircularText - 弧形文字（改进）
+```typescript
+drawArcText(): void {
+  const ctx = this.canvasContext;
+  ctx.textAlign = CommonConstants.TEXT_ALIGN;
+  ctx.textBaseline = CommonConstants.TEXT_BASE_LINE;
+  ctx.fillStyle = ColorConstants.TEXT_COLOR;
+  ctx.font = StyleConstants.ARC_TEXT_SIZE + CommonConstants.CANVAS_FONT;
+  ctx.shadowColor = ColorConstants.TEXT_SHADOW;
+  ctx.shadowBlur = CommonConstants.TEXT_SHADOW_BLUR;
+
+  const textArrays = [
+    $r('app.string.text_smile'), $r('app.string.text_hamburger'),
+    $r('app.string.text_cake'), $r('app.string.text_smile'),
+    $r('app.string.text_hamburger'), $r('app.string.text_watermelon')
+  ];
+  for (let i = 0; i < CommonConstants.COUNT; i++) {
+    this.drawCircularText(this.getResourceString(textArrays[i]),
+      (this.startAngle + CommonConstants.ARC_START_ANGLE) * Math.PI / CommonConstants.HALF_CIRCLE,
+      (this.startAngle + CommonConstants.ARC_END_ANGLE) * Math.PI / CommonConstants.HALF_CIRCLE);
+    this.startAngle += this.avgAngle;
+  }
+  ctx.shadowBlur = 0;
+}
+```
+**功能**: 在扇区外侧绘制白色文字，带黑色阴影增强可读性。文字沿圆弧排列（`drawCircularText`），逐字符计算位置。
+
+```typescript
+drawCircularText(textString: string, startAngle: number, endAngle: number): void {
+  const radius = this.screenWidth * CommonConstants.INNER_ARC_RATIOS
+    - this.screenWidth * CommonConstants.INNER_ARC_RATIOS / CommonConstants.COUNT;
+  const angleDecrement = (startAngle - endAngle) / (textString.length - 1);
+  let angle = startAngle;
+  let index = 0;
+
+  while (index < textString.length) {
+    const character = textString.charAt(index);
+    ctx.save();
+    ctx.beginPath();
+    ctx.translate(Math.cos(angle) * radius, -Math.sin(angle) * radius);
+    ctx.rotate(Math.PI / CommonConstants.TWO - angle);
+    ctx.fillText(character, 0, 0);
+    angle -= angleDecrement;
+    index++;
+    ctx.restore();
+  }
+}
+```
+**功能**: 将文字绘制在扇形外沿的弧形上。每个字符通过三角函数计算位置，逐个绘制并旋转使其沿弧线排列。半径位置在扇区外沿（`radius - radius/6`），确保文字在扇区外部不被裁剪。
+
+#### 7.7 drawImage - Emoji绘制（改进）
+```typescript
+drawImage(): void {
+  const ctx = this.canvasContext;
+  if (ctx === undefined) return;
+  let beginAngle = this.startAngle;
+  const emojis: string[] = ['🍉', '🍔', '😊', '🎂', '🍔', '😊'];
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '110px sans-serif';
+  ctx.shadowColor = ColorConstants.TEXT_SHADOW;
+  ctx.shadowBlur = CommonConstants.TEXT_SHADOW_BLUR;
+  for (let i = 0; i < CommonConstants.COUNT; i++) {
+    ctx.save();
+    ctx.rotate(beginAngle * Math.PI / CommonConstants.HALF_CIRCLE);
+    ctx.fillText(emojis[i],
+      this.screenWidth * CommonConstants.IMAGE_DX_RATIOS + CommonConstants.IMAGE_SIZE / 2,
+      this.screenWidth * CommonConstants.IMAGE_DY_RATIOS + CommonConstants.IMAGE_SIZE / 2);
+    beginAngle += this.avgAngle;
+    ctx.restore();
+  }
+}
+```
+**功能**: 
+- 第一版使用`ImageBitmap`加载图片文件，可能因资源加载问题导致显示失败
+- 改用**Emoji字符**通过`fillText`绘制（110px超大字体），永远可靠显示
+- Emoji位置在扇区内侧（靠近圆心），与外侧的文字不重叠
+- 坐标计算：`screenWidth * IMAGE_DX_RATIOS + IMAGE_SIZE/2`，通过比例常量控制偏移
+
+#### 7.8 drawInnerCircle - 内圈辉光（改进）
+```typescript
+drawInnerCircle(): void {
+  // Glow
+  ctx.save();
+  ctx.shadowColor = ColorConstants.INNER_GLOW_COLOR;
+  ctx.shadowBlur = CommonConstants.GLOW_BLUR;
+  this.fillArc(new FillArcData(0, 0, this.screenWidth * CommonConstants.INNER_CIRCLE_RATIOS, 0,
+    Math.PI * CommonConstants.TWO), ColorConstants.INNER_CIRCLE_COLOR);
+  ctx.restore();
+  // Main circle
+  this.fillArc(new FillArcData(0, 0, this.screenWidth * CommonConstants.INNER_CIRCLE_RATIOS, 0,
+    Math.PI * CommonConstants.TWO), ColorConstants.INNER_CIRCLE_COLOR);
+  // Inner dot
+  this.fillArc(new FillArcData(0, 0, this.screenWidth * CommonConstants.INNER_DOT_RATIOS, 0,
+    Math.PI * CommonConstants.TWO), ColorConstants.OUTER_RING_COLOR);
+}
+```
+**功能**: 绘制转盘中心三层圆：紫色辉光层→深蓝色主圆→最中心深色小圆点。辉光营造霓虹灯效果。
+
+#### 7.9 drawCenterGlow - 中心金环（新增）
+```typescript
+drawCenterGlow(): void {
+  ctx.save();
+  ctx.shadowColor = ColorConstants.CENTER_BUTTON_GLOW;
+  ctx.shadowBlur = 25;
+  ctx.beginPath();
+  ctx.arc(0, 0, this.screenWidth * CommonConstants.INNER_DOT_RATIOS + 6, 0,
+    Math.PI * CommonConstants.TWO);
+  ctx.strokeStyle = ColorConstants.CENTER_BUTTON_GLOW;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+}
+```
+**功能**: 在中心按钮周围绘制金色发光圆环，`shadowBlur=25`制造强烈的辉光扩散效果，突出中心按钮的交互性。
+
+#### 7.10 showPrizeData / getPrizeData
+```typescript
+showPrizeData(randomAngle: number): PrizeData {
+  for (let i = 1; i <= CommonConstants.COUNT; i++) {
+    if (randomAngle <= i * this.avgAngle) {
+      return this.getPrizeData(i);
+    }
+  }
+  return new PrizeData();
+}
+```
+**功能**: 与第一版相同的奖品判定逻辑。随机角度除以60°（360°/6）确定落在哪个扇区。
+
+---
+
+## 8. 主页面改进 (CanvasPage.ets)
+
+**文件路径**: `entry/src/main/ets/pages/CanvasPage.ets`
+
+### 功能说明
+
+与第一版相比，从单一转盘页面升级为多Tab应用。新增：Tab导航（转盘/刮刮乐/记录）、签到系统（每日签到、连续天数统计）、渐变背景、星空粒子层。
+
+### 代码详解
+
+#### 8.1 组件定义
+```typescript
+import WheelView from '../view/WheelView';
+import ScratchCardView from '../view/ScratchCardView';
+import HistoryView from '../view/HistoryView';
+import StarParticle from '../view/StarParticle';
+```
+**功能**: 导入三个独立视图组件（转盘、刮刮乐、记录、星空粒子）。
+
+```typescript
+@Component
+struct CanvasPage {
+  @State currentIndex: number = 0;
+  @State checkedIn: boolean = false;
+  @State checkInDays: number = 0;
+  @State currentBreakpoint: string = 'sm';
+```
+**功能**: 
+- `currentIndex`: 当前Tab索引（0=转盘，1=刮刮乐，2=记录）
+- `checkedIn`: 今天是否已签到
+- `checkInDays`: 连续签到天数
+- `currentBreakpoint`: 当前断点（'sm'=手机底部Tab，'md'/'lg'等=平板侧边栏）
+
+#### 8.2 aboutToAppear
+
+```typescript
+aboutToAppear(): void {
+  window.getLastWindow(context)
+    .then((wc) => {
+      wc.setWindowLayoutFullScreen(true);
+
+      // 断点检测
+      const wp = wc.getWindowProperties();
+      const vpW = uiContext!.px2vp(wp.windowRect.width);
+      const vpH = uiContext!.px2vp(wp.windowRect.height);
+      this.currentBreakpoint = Math.min(vpW, vpH) >= 600 ? 'md' : 'sm';
+
+      // 监听窗口变化
+      wc.on('windowSizeChange', (size: window.Size) => {
+        const w = uiContext!.px2vp(size.width);
+        const h = uiContext!.px2vp(size.height);
+        this.currentBreakpoint = Math.min(w, h) >= 600 ? 'md' : 'sm';
+      });
+    })
+    .catch((e: Error) => { Logger.error('Fullscreen error: ' + JSON.stringify(e)); });
+  this.checkDaily();
+}
+```
+**功能**: 设置全屏 + 检测初始断点（短边≥600vp为平板模式）+ 监听窗口大小变化自动切换布局 + 检查今日签到状态。
+
+#### 8.3 checkDaily - 签到检查
+```typescript
+checkDaily(): void {
+  const today = new Date().toDateString();
+  const lastCheckIn = AppStorage.get<string>('last_checkin') || '';
+  const streak = AppStorage.get<number>('checkin_streak') || 0;
+
+  if (lastCheckIn === today) {
+    this.checkedIn = true;
+    this.checkInDays = streak;
+  } else {
+    this.checkedIn = false;
+    this.checkInDays = streak;
+  }
+}
+```
+**功能**: 读取AppStorage中的最后签到日期和连续天数。如果最后签到日期是今天，标记已签到；否则标记未签到（但仍保留连续天数，待签到后确认是否连续）。
+
+#### 8.4 doCheckIn - 执行签到
+```typescript
+doCheckIn(): void {
+  const today = new Date().toDateString();
+  const lastCheckIn = AppStorage.get<string>('last_checkin') || '';
+  let streak = AppStorage.get<number>('checkin_streak') || 0;
+
+  // Check if consecutive day
+  const yesterday = new Date(Date.now() - 86400000).toDateString();
+  if (lastCheckIn === yesterday) {
+    streak++;
+  } else if (lastCheckIn !== today) {
+    streak = 1;
+  }
+
+  AppStorage.set('last_checkin', today);
+  AppStorage.set('checkin_streak', streak);
+  this.checkedIn = true;
+  this.checkInDays = streak;
+}
+```
+**功能**: 签到逻辑：
+- 如果昨天签过到（`lastCheckIn === yesterday`）：连续天数+1
+- 如果今天还没签到且昨天也没签：重置为1天
+- 更新AppStorage中的签到日期和连续天数
+- `yesterday`通过`Date.now() - 86400000`（24小时毫秒数）计算
+
+#### 8.5 build - UI构建
+```typescript
+build() {
+  Stack() {
+    // Gradient background
+    Column()
+      .width(StyleConstants.FULL_PERCENT)
+      .height(StyleConstants.FULL_PERCENT)
+      .linearGradient({
+        direction: GradientDirection.Bottom,
+        colors: [
+          [ColorConstants.BG_COLOR_TOP, 0],
+          [ColorConstants.BG_COLOR_MID, 0.5],
+          [ColorConstants.BG_COLOR_BOTTOM, 1],
+        ]
+      })
+```
+**功能**: 三层渐变背景（深紫→紫蓝→深蓝），替代第一版的背景图片。
+
+```typescript
+    // Star particle overlay
+    StarParticle()
+```
+**功能**: 在背景上覆盖星空粒子层，营造沉浸氛围。
+
+```typescript
+    // Main content column (to fit Tabs + check-in badge)
+    Column() {
+      // Check-in badge (top-right corner, only on first tab)
+      if (this.currentIndex === 0) {
+        Row() {
+          if (this.checkedIn) {
+            Text(`✅ 已签到 ${this.checkInDays} 天`)
+              .fontSize(11).fontColor('rgba(255,215,0,0.6)')
+          } else {
+            Text('📅 签到')
+              .fontSize(12).fontColor('#FFD700').fontWeight(600)
+              .onClick(() => { this.doCheckIn(); })
+          }
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.End)
+        .padding({ right: 16, top: 8 })
+      }
+```
+**功能**: 
+- 仅在第一Tab（转盘页）右上角显示签到按钮
+- 未签到：金色"📅 签到"文字，点击执行签到
+- 已签到：半透明金色"✅ 已签到 X 天"
+
+```typescript
+      // Tabs (响应式: 手机底部Tab / 平板左侧侧边栏)
+      Tabs({
+        barPosition: this.currentBreakpoint === 'sm' ? BarPosition.End : BarPosition.Start,
+        index: this.currentIndex
+      }) {
+        TabContent() { WheelView() }
+          .tabBar(this.tabBuilder(0))
+        TabContent() { ScratchCardView() }
+          .tabBar(this.tabBuilder(1))
+        TabContent() { HistoryView() }
+          .tabBar(this.tabBuilder(2))
+      }
+      .vertical(this.currentBreakpoint !== 'sm')
+      .barWidth(this.currentBreakpoint === 'sm' ? '100%' : 90)
+      .barHeight(this.currentBreakpoint === 'sm' ? undefined : '100%')
+      .width(StyleConstants.FULL_PERCENT)
+      .height(StyleConstants.FULL_PERCENT)
+      .onChange((idx: number) => { this.currentIndex = idx; })
+```
+**功能**: 
+- `Tabs`组件：`barPosition`在手机端为`End`(底部)，平板端为`Start`(左侧)
+- `.vertical()`控制Tab方向，平板端为竖向侧边栏
+- `.barWidth()`平板端90vp侧边栏宽度
+- `.onChange`监听Tab切换更新`currentIndex`
+
+#### 8.6 tabBuilder - 自定义标签栏（已更新为响应式）
+
+```typescript
+@Builder
+tabBuilder(index: number) {
+  const isTablet: boolean = this.currentBreakpoint !== 'sm';
+  const isActive: boolean = index === this.currentIndex;
+  Column() {
+    if (index === 0) {
+      Text('🎡').fontSize(isTablet ? 26 : 18).margin({ bottom: isTablet ? 6 : 1 })
+      Text('转盘').fontSize(isTablet ? 13 : 10).fontColor('#FFFFFF')
+        .fontWeight(isActive ? 700 : 400)
+    } else if (index === 1) {
+      Text('🎫').fontSize(isTablet ? 26 : 18).margin({ bottom: isTablet ? 6 : 1 })
+      Text('刮刮乐').fontSize(isTablet ? 13 : 10).fontColor('#FFFFFF')
+        .fontWeight(isActive ? 700 : 400)
+    } else {
+      Text('📊').fontSize(isTablet ? 26 : 18).margin({ bottom: isTablet ? 6 : 1 })
+      Text('记录').fontSize(isTablet ? 13 : 10).fontColor('#FFFFFF')
+        .fontWeight(isActive ? 700 : 400)
+    }
+  }
+  .padding(isTablet ? { top: 20, bottom: 20 } : { top: 6, bottom: 10 })
+  .width(isTablet ? '100%' : 72)
+  .backgroundColor(isTablet && isActive ? 'rgba(255,215,0,0.12)' : 'transparent')
+  .borderRadius(isTablet ? 8 : 0)
+  .border({
+    width: (isTablet && isActive) ? { left: 3 } : {},
+    color: (isTablet && isActive) ? { left: '#FFD700' } : {}
+  })
+}
+```
+**功能**: 
+- **手机模式(sm)**：底部水平Tab，图标18px、文字10px、宽度72vp，选中项字体加粗
+- **平板模式(md+)**：左侧竖向Tab侧边栏，图标26px、文字13px、宽度100%填充90vp侧边栏，选中项有金色半透明背景 + 左侧3px金色指示条 + 8px圆角
+
+### 8.7 一次开发多端部署 — 响应式布局
+
+#### 8.7.1 设计目标
+
+| 断点 | 短边宽度 | 典型设备 | 导航方式 |
+|------|---------|---------|---------|
+| sm | [320, 600)vp | 手机（竖屏+横屏） | 底部 Tab |
+| md+ | [600, +∞)vp | 平板（竖屏+横屏） | 左侧竖向 Tab 侧边栏 |
+
+手机横屏时短边仍 < 600vp，自动归入 sm 断点保持底部 Tab。
+
+#### 8.7.2 核心思路：Tabs 组件原生响应式
+
+参考 ArkUI 官方"一次开发多端部署"方案，利用 `Tabs` 组件自身的 `vertical` + `barPosition` 属性配合断点系统，**无需手写两套布局**。同一套 `TabContent` + `tabBar` Builder，仅根据断点切换 3 个属性：
+
+```
+sm 断点:
+  Tabs({ barPosition: BarPosition.End })
+  .vertical(false)      → 底部水平 Tab
+
+md+ 断点:
+  Tabs({ barPosition: BarPosition.Start })
+  .vertical(true)       → 左侧竖向 Tab（等于侧边栏）
+  .barWidth(90)         → 侧边栏宽度
+```
+
+#### 8.7.3 新增状态变量
+
+```typescript
+@State currentBreakpoint: string = 'sm';
+```
+
+#### 8.7.4 aboutToAppear — 断点检测与监听
+
+```typescript
+aboutToAppear(): void {
+  window.getLastWindow(context)
+    .then((wc) => {
+      wc.setWindowLayoutFullScreen(true);
+
+      // 获取初始窗口尺寸，计算断点
+      const wp = wc.getWindowProperties();
+      const vpW = uiContext!.px2vp(wp.windowRect.width);
+      const vpH = uiContext!.px2vp(wp.windowRect.height);
+      this.currentBreakpoint = Math.min(vpW, vpH) >= 600 ? 'md' : 'sm';
+
+      // 监听窗口尺寸变化（折叠屏展开/关闭、分屏等场景）
+      wc.on('windowSizeChange', (size: window.Size) => {
+        const w = uiContext!.px2vp(size.width);
+        const h = uiContext!.px2vp(size.height);
+        this.currentBreakpoint = Math.min(w, h) >= 600 ? 'md' : 'sm';
+      });
+    })
+    .catch((e: Error) => { Logger.error('Fullscreen error: ' + JSON.stringify(e)); });
+  this.checkDaily();
+}
+```
+
+**关键设计决策**：
+- 使用 `Math.min(width, height)`（短边）而非宽度来判断，确保手机横屏不会被误判为平板
+- 阈值 600vp 对应 ArkUI 断点系统中 sm → md 的分界线
+- `windowSizeChange` 事件保证运行时窗口变化（如分屏、折叠屏展开）时自动切换布局
+
+#### 8.7.5 Tabs 组件响应式属性
+
+```typescript
+Tabs({
+  barPosition: this.currentBreakpoint === 'sm' ? BarPosition.End : BarPosition.Start,
+  index: this.currentIndex
+}) {
+  TabContent() { WheelView() }
+    .tabBar(this.tabBuilder(0))
+  TabContent() { ScratchCardView() }
+    .tabBar(this.tabBuilder(1))
+  TabContent() { HistoryView() }
+    .tabBar(this.tabBuilder(2))
+}
+.vertical(this.currentBreakpoint !== 'sm')
+.barWidth(this.currentBreakpoint === 'sm' ? '100%' : 90)
+.barHeight(this.currentBreakpoint === 'sm' ? undefined : '100%')
+.width(StyleConstants.FULL_PERCENT)
+.height(StyleConstants.FULL_PERCENT)
+.onChange((idx: number) => { this.currentIndex = idx; })
+```
+
+**各属性断点对照表**：
+
+| 属性 | sm (手机) | md+ (平板) |
+|------|----------|-----------|
+| `barPosition` | `End` | `Start` |
+| `vertical` | `false` | `true` |
+| `barWidth` | `'100%'` | `90`vp |
+| `barHeight` | `undefined`（默认） | `'100%'` |
+
+#### 8.7.6 子组件无需改动
+
+三个 View 组件（`WheelView`、`ScratchCardView`、`HistoryView`）使用 `screenWidth * ratio` 比例自适应，在平板端自动等比例放大，无需任何修改。
+
+#### 8.7.7 范围与限制
+
+- **已实现**：手机底部Tab / 平板左侧侧边栏自适应切换
+- **不涉及**：折叠屏展开/闭合适配、多HAP工程拆分、车机/电视/手表适配、SysCap能力检测
+
+---
+
+## 9. 常量配置改进
+
+### 9.1 ColorConstants.ets (完全重写)
+
+**文件路径**: `entry/src/main/ets/common/constants/ColorConstants.ets`
+
+**对比第一版**：从暖色明亮主题（粉/黄/绿/橙色）改为暗色霓虹主题（深紫/蓝/金色发光）。
+
+```typescript
+export default class ColorConstants {
+  /** Sector gradient color1 (6 sectors) */
+  static readonly SECTOR_COLOR1: string[] = [
+    '#FF6B9D', '#FF9A56', '#00D2FF',
+    '#FF6B9D', '#FF9A56', '#00D2FF'
+  ];
+
+  /** Sector gradient color2 (6 sectors) */
+  static readonly SECTOR_COLOR2: string[] = [
+    '#C44AFF', '#FFD93D', '#3A7BD5',
+    '#C44AFF', '#FFD93D', '#3A7BD5'
+  ];
+```
+**功能**: 6个扇区的渐变颜色对：
+- 扇区1/4：粉色→紫色渐变
+- 扇区2/5：橙色→黄色渐变  
+- 扇区3/6：青色→蓝色渐变
+
+```typescript
+  /** Outer ring */
+  static readonly OUTER_RING_COLOR: string = '#1A1A2E';
+  static readonly OUTER_RING_GLOW: string = '#4A4A8A';
+
+  /** Decorative rotating ring */
+  static readonly DECO_RING_COLOR: string = '#FFD700';
+  static readonly DECO_RING_DOT_COLOR: string = '#FFA500';
+
+  /** Inner circle */
+  static readonly INNER_CIRCLE_COLOR: string = '#2D2D5E';
+  static readonly INNER_GLOW_COLOR: string = '#6C6CFF';
+
+  /** Center button */
+  static readonly CENTER_BUTTON_GLOW: string = '#FFD700';
+  static readonly CENTER_BUTTON_INNER: string = '#FFFFFF';
+
+  /** Text */
+  static readonly TEXT_COLOR: string = '#FFFFFF';
+  static readonly TEXT_SHADOW: string = '#000000';
+
+  /** Background */
+  static readonly BG_COLOR_TOP: string = '#0F0C29';
+  static readonly BG_COLOR_MID: string = '#302B63';
+  static readonly BG_COLOR_BOTTOM: string = '#24243E';
+
+  /** Star particle */
+  static readonly STAR_COLOR: string = '#FFFFFF';
+
+  /** Scratch card */
+  static readonly SCRATCH_COAT_COLOR1: string = '#FFD700';
+  static readonly SCRATCH_COAT_COLOR2: string = '#FFA500';
+}
+```
+**功能**: 
+- 外圈：深蓝色+紫色辉光
+- 装饰环：金色+橙色圆点
+- 内圈：蓝紫色+蓝色辉光
+- 中心按钮：金色光晕
+- 文字：白色带黑色阴影
+- 背景：三段式渐变（深紫→紫蓝→深蓝）
+- 刮刮乐涂层：金色渐变
+
+### 9.2 CommonConstants.ets (重写)
+
+**新增常量**：
+```typescript
+static readonly OUTER_RING_RATIOS: number = 0.42;      // 外圈半径比例
+static readonly DECO_RING_RATIOS: number = 0.39;       // 装饰环半径比例
+static readonly INNER_ARC_RATIOS: number = 0.45;       // 扇形半径比例（对比第一版0.336）
+static readonly INNER_CIRCLE_RATIOS: number = 0.30;    // 内圈半径比例（对比第一版0.356）
+static readonly INNER_DOT_RATIOS: number = 0.26;       // 内圈中心点半径比例
+static readonly DECO_DOT_RADIUS: number = 3;           // 装饰圆点半径
+static readonly DECO_RING_DOT_COUNT: number = 12;      // 装饰圆点数量
+
+static readonly IMAGE_SIZE: number = 40;               // 奖品图片尺寸
+static readonly IMAGE_DX_RATIOS: number = 0.10;        // Emoji X偏移比例（对比第一版0.114）
+static readonly IMAGE_DY_RATIOS: number = 0.05;        // Emoji Y偏移比例（对比第一版0.052）
+
+// 弧文字设置
+static readonly ARC_START_ANGLE: number = 40;          // 弧形文字起始偏移角度
+static readonly ARC_END_ANGLE: number = 20;            // 弧形文字结束偏移角度
+
+// 辉光效果
+static readonly GLOW_BLUR: number = 20;                // 辉光模糊半径
+static readonly TEXT_SHADOW_BLUR: number = 4;          // 文字阴影模糊半径
+```
+**功能**: 所有布局比例调整适配新的暗色主题设计。`INNER_ARC_RATIOS`从0.336增加到0.45使扇形占据更大面积。
+
+### 9.3 StyleConstants.ets (更新)
+
+```typescript
+static readonly CENTER_IMAGE_WIDTH: string = '19.3%';   // 中心按钮宽度
+static readonly CENTER_IMAGE_HEIGHT: string = '10.6%';  // 中心按钮高度
+static readonly ARC_TEXT_SIZE: number = uiContext!.fp2px(22);  // 弧文字大小（从14fp改为22fp）
+```
+**功能**: 弧文字从14fp增大到22fp，提升可读性。新增中心按钮尺寸常量。
+
+---
+
+## 10. 功能流程分析
+
+### 10.1 应用启动流程
+```
+EntryAbility.onCreate()
+    ↓
+EntryAbility.onWindowStageCreate()
+    ↓
+windowStage.loadContent('pages/CanvasPage')
+    ↓
+AppStorage.setOrCreate('uiContext', ...)
+    ↓
+CanvasPage.aboutToAppear()
+    ↓
+设置全屏 → 检查签到状态
+    ↓
+CanvasPage.build()
+    ↓
+StarParticle 星空粒子开始动画
+    ↓
+WheelView.aboutToAppear()
+    ↓
+获取屏幕尺寸 → 订阅语言事件 → 开始按钮呼吸动效
+    ↓
+### (画布就绪后)
+Canvas.onReady()
+    ↓
+DrawModel.drawOuterRing()      外圈辉光环
+DrawModel.drawDecoRing()       金色装饰环+圆点
+DrawModel.drawInnerCircle()    内圈辉光+中心圆
+DrawModel.drawInnerArc()       6个渐变扇形
+DrawModel.drawArcText()        弧形奖品文字
+DrawModel.drawImage()          奖品Emoji
+DrawModel.drawCenterGlow()     中心按钮光晕
+```
+
+### 10.2 刮刮乐流程
+```
+用户切换到"刮刮乐"Tab
+    ↓
+ScratchCardView.onReady()
+    ↓
+initCard() → pickPrize()随机选奖 → drawCard()绘制卡片
+    ↓
+--- 涂层绘制 ---
+roundRect()绘制圆角卡片路径
+绘制奖品文字+Emoji在底层
+绘制金色线性渐变涂层在上层
+    ↓
+用户手指滑动刮擦
+    ↓
+onTouchHandler (Down/Move/Up)
+    ↓
+scratchAt(x, y)
+    ↓
+globalCompositeOperation = 'destination-out' 擦除涂层
+    ↓
+计算刮开百分比
+    ↓
+≥45%? → revealCard()
+    ↓
+清除所有涂层 → 显示庆祝界面 → 保存历史记录
+    ↓
+用户点击"再来一张"
+    ↓
+重新 initCard()
+```
+
+### 10.3 连抽流程
+```
+用户点击"连抽 3 次"或"连抽 5 次"
+    ↓
+startMulti(n)
+    ↓
+enableFlag = false → 禁用所有按钮
+    ↓
+spinOnce() → 旋转动画(4秒)
+    ↓
+onSpinFinished()
+    ↓
+multiRemaining-- → 记录此次结果
+    ↓
+还有剩余次数? → 800ms后自动 spinOnce()
+    ↓
+无剩余次数? → showMultiSummary()
+    ↓
+统计每种奖品出现次数 → 显示汇总弹窗 → 触发彩纸
+```
+
+### 10.4 签到流程
+```
+页面加载 → checkDaily()
+    ↓
+AppStorage读取 last_checkin 和 checkin_streak
+    ↓
+已签到? → 显示"✅ 已签到 X 天"
+未签到? → 显示"📅 签到"按钮
+    ↓
+用户点击"📅 签到"
+    ↓
+doCheckIn()
+    ↓
+检查昨天是否签到 → 连续天数+1或重置为1
+    ↓
+AppStorage持久化 → UI更新
+```
+
+### 10.5 彩纸庆祝流程
+```
+中奖触发 → triggerConfetti()
+    ↓
+confettiKey++ → 重新创建ConfettiEffect组件
+    ↓
+aboutToAppear → trigger()
+    ↓
+生成80个随机粒子（位置/速度/颜色/形状）
+    ↓
+animate() 循环 (16ms/帧)
+    ↓
+每帧：更新位置(+速度+重力) → 降低透明度 → 绘制粒子
+    ↓
+粒子全部消失或达到200帧 → 清除画布停止
+```
+
+### 10.6 历史记录数据流
+```
+抽奖完成 / 刮奖揭晓
+    ↓
+addHistory() / saveHistory()
+    ↓
+格式: "timestamp|imageUrl"
+存储: AppStorage('wheel_history')
+    ↓
+切换到"记录"Tab
+    ↓
+HistoryView.onPageShow() → loadHistory()
+    ↓
+解析: split(',') → split('|')
+    ↓
+倒序显示 → 统计中奖率
+    ↓
+List组件展示
+```
+
+---
+
+## 总结
+
+与第一版相比，本项目从单一转盘抽奖应用升级为集**转盘抽奖、刮刮乐、历史记录**三大功能于一体的综合性抽奖应用。新增以下技术亮点：
+
+1. **Canvas图层擦除技术**：使用`globalCompositeOperation = 'destination-out'`实现刮刮乐涂层擦除
+2. **粒子系统**：彩纸庆祝粒子（重力、淡出、旋转）和星空呼吸粒子（正弦波脉冲）
+3. **多Tab导航**：ArkUI Tabs组件实现页面切换
+4. **连抽机制**：自动连续抽奖 + 结果汇总统计
+5. **签到系统**：基于AppStorage的每日签到 + 连续天数持久化
+6. **视觉升级**：径向渐变扇形、多层辉光效果、渐变星空背景、弹跳入场动画
+7. **响应式交互**：按钮呼吸动效、页面切换自动刷新、语言切换实时更新
+
+---
+
+## 第三部分：多端适配 / 多端部署实现说明（README3）
+
+> 来源文件：`README3.md`
+
+# README3 - 多端适配实现说明
+
+本文说明本项目如何实现手机、平板、横屏、竖屏的多端适配，并逐行解释参与多端适配的关键代码。
+
+项目中的多端适配主要由三个文件协作完成：
 
 | 文件 | 职责 |
 | --- | --- |
-| `EntryAbility.ts` | 应用入口、生命周期、自由流转保存与恢复 |
-| `CanvasPage.ets` | 主页面、Tab 容器、多端内容区域计算、签到入口 |
-| `WheelView.ets` | 转盘抽奖、连抽、转盘动画、中奖弹窗触发 |
-| `ScratchCardView.ets` | 刮刮乐 Canvas 绘制、触摸刮开、横屏卡片适配 |
-| `HistoryView.ets` | 抽奖历史记录展示、中奖率统计、清空记录 |
-| `PrizeDialog.ets` | 中奖结果弹窗 |
-| `ConfettiEffect.ets` | 彩纸庆祝动画 |
-| `StarParticle.ets` | 星空粒子背景 |
-| `DrawModel.ets` | 转盘 Canvas 绘制模型 |
-| `CommonConstants.ets` | 通用常量 |
-| `ColorConstants.ets` | 颜色和主题常量 |
-| `StyleConstants.ets` | 样式常量 |
+| `CanvasComponent-master/entry/src/main/ets/pages/CanvasPage.ets` | 统一计算页面可用宽高，决定手机/平板 Tab 形态 |
+| `CanvasComponent-master/entry/src/main/ets/view/WheelView.ets` | 根据可用区域重绘转盘，保证 GO 按钮在转盘中心 |
+| `CanvasComponent-master/entry/src/main/ets/view/ScratchCardView.ets` | 根据可用区域重绘刮刮乐，手机横屏使用横向卡片布局 |
 
-## 三、核心功能
+## 一、整体适配思路
 
-### 1. 转盘抽奖
+本项目不是为每一种设备写一套页面，而是通过下面这套流程实现多端适配：
 
-转盘功能由 `WheelView.ets` 和 `DrawModel.ets` 共同实现。
+1. `CanvasPage` 获取当前窗口尺寸。
+2. 使用较短边判断当前是手机布局还是平板布局。
+3. 手机布局使用底部 Tab，平板布局使用左侧竖向 Tab。
+4. `CanvasPage` 扣除底部 Tab 或侧边栏占用的空间，得到真实内容区域。
+5. 将真实内容区域写入 `AppStorage`。
+6. `WheelView` 和 `ScratchCardView` 从 `AppStorage` 读取内容区域尺寸。
+7. 子组件只按照真实内容区域绘制 Canvas，不再按照整屏窗口绘制。
+8. 横屏时压缩高度、缩小控件、调整布局比例，避免内容超出屏幕。
 
-主要能力：
+核心共享变量如下：
 
-| 功能 | 说明 |
+| 变量 | 含义 |
 | --- | --- |
-| Canvas 转盘绘制 | 使用 Canvas 绘制外环、扇区、文字、emoji 奖品 |
-| 单次抽奖 | 点击中心 GO 按钮触发一次抽奖 |
-| 3 连抽 / 5 连抽 | 支持连续多次抽奖并汇总结果 |
-| 动画旋转 | 使用 `animateTo` 控制转盘旋转 |
-| 中奖弹窗 | 抽奖结束后弹出中奖结果 |
-| 彩纸动画 | 抽奖完成后触发庆祝粒子 |
-| 历史记录 | 每次结果写入 `wheel_history` |
+| `contentWidth` | 当前页面可用于业务内容的宽度 |
+| `contentHeight` | 当前页面可用于业务内容的高度 |
+| `isLandscape` | 当前内容区域是否为横屏比例 |
+| `currentBreakpoint` | 当前页面断点，`sm` 表示手机小屏，`md` 表示平板/大屏 |
 
-核心流程：
+## 二、CanvasPage 的多端适配代码
 
-```txt
-点击按钮
-→ 生成随机角度
-→ 根据角度计算奖品
-→ 执行旋转动画
-→ 保存历史记录
-→ 弹出中奖结果
-```
+`CanvasPage` 是整个页面的入口。它负责识别设备尺寸，并把可用区域告诉子组件。
 
-### 2. 刮刮乐
+### 1. 状态变量
 
-刮刮乐功能由 `ScratchCardView.ets` 实现。
-
-主要能力：
-
-| 功能 | 说明 |
-| --- | --- |
-| 随机奖品 | 每张卡随机选择奖品 |
-| Canvas 涂层 | 先绘制奖品底层，再绘制金色涂层 |
-| 触摸刮开 | 使用 `destination-out` 擦除涂层 |
-| 进度统计 | 根据刮开面积估算百分比 |
-| 自动揭晓 | 刮开达到约 45% 后自动显示结果 |
-| 火花粒子 | 刮动时产生粒子效果 |
-| 历史记录 | 揭晓后保存到 `wheel_history` |
-
-核心流程：
-
-```txt
-生成奖品
-→ 绘制奖品底层
-→ 绘制金色涂层
-→ 用户触摸刮开
-→ 达到阈值后揭晓
-→ 保存历史记录
-```
-
-### 3. 抽奖记录
-
-抽奖记录由 `HistoryView.ets` 实现。
-
-主要能力：
-
-| 功能 | 说明 |
-| --- | --- |
-| 读取记录 | 从 `wheel_history` 读取历史数据 |
-| 倒序展示 | 最新记录显示在最上方 |
-| 判断中奖 | 根据奖品类型判断中奖/未中奖 |
-| 统计中奖率 | 计算总次数和中奖率 |
-| 清空记录 | 支持一键清空历史 |
-
-记录格式：
-
-```txt
-timestamp|imagePath,timestamp|imagePath
-```
-
-最多保留最近 100 条记录。
-
-### 4. 视觉增强
-
-项目增加了多种视觉效果：
-
-| 功能 | 文件 | 说明 |
-| --- | --- | --- |
-| 星空背景 | `StarParticle.ets` | 页面背景动态闪烁 |
-| 彩纸庆祝 | `ConfettiEffect.ets` | 抽奖完成后触发庆祝 |
-| 中奖弹窗 | `PrizeDialog.ets` | 显示奖品 emoji 和文案 |
-| 暗色渐变主题 | `ColorConstants.ets` | 页面整体为深色霓虹风格 |
-
-### 5. 签到系统
-
-签到功能位于 `CanvasPage.ets`。
-
-主要状态：
-
-| 状态 | 说明 |
-| --- | --- |
-| `last_checkin` | 上次签到日期 |
-| `checkin_streak` | 连续签到天数 |
-| `checkedIn` | 当前页面是否显示已签到 |
-| `checkInDays` | 当前显示的连续签到天数 |
-
-签到数据已接入 `PersistentStorage`，可配合自由流转一起迁移。
-
-## 四、多端适配实现
-
-多端适配主要来自 `README3.md`，当前实现目标是让应用在手机、平板、横屏、竖屏下都能正常显示。
-
-### 1. 统一内容区域
-
-`CanvasPage.ets` 负责获取窗口宽高，并计算真正可用的内容区域：
+代码：
 
 ```ts
-const isSmallScreen: boolean = this.currentBreakpoint === 'sm';
-const sidebarW = isSmallScreen ? 0 : 90;
-const bottomTabH = isSmallScreen ? (fullW > fullH ? 50 : 64) : 0;
-const cw = fullW - sidebarW;
-const ch = fullH - bottomTabH;
-AppStorage.setOrCreate('contentWidth', cw);
-AppStorage.setOrCreate('contentHeight', ch);
-AppStorage.setOrCreate('isLandscape', cw > ch);
+@State currentIndex: number = 0;
+@State checkedIn: boolean = false;
+@State checkInDays: number = 0;
+@State currentBreakpoint: string = 'sm';
 ```
 
-含义：
+逐行解释：
 
-| 逻辑 | 作用 |
+| 代码 | 作用 |
 | --- | --- |
-| 短边小于 600vp | 使用手机布局 |
-| 短边大于等于 600vp | 使用平板布局 |
-| 手机布局 | 使用底部 Tab，需要扣除底部高度 |
-| 平板布局 | 使用左侧 Tab，需要扣除侧边栏宽度 |
-| `contentWidth/contentHeight` | 子页面统一使用的业务绘制区域 |
+| `@State currentIndex: number = 0;` | 记录当前选中的 Tab，`0` 表示转盘页 |
+| `@State checkedIn: boolean = false;` | 记录当天是否已经签到 |
+| `@State checkInDays: number = 0;` | 记录连续签到天数 |
+| `@State currentBreakpoint: string = 'sm';` | 记录当前布局断点，默认使用手机小屏布局 |
 
-### 2. Tab 适配
+### 2. 页面出现时读取窗口尺寸
 
-手机和平板的 Tab 布局不同：
+代码：
 
-| 设备 | Tab 位置 | 代码策略 |
-| --- | --- | --- |
-| 手机 | 底部 | `BarPosition.End` |
-| 平板 | 左侧 | `BarPosition.Start` + `.vertical(true)` |
+```ts
+aboutToAppear(): void {
+  window.getLastWindow(context)
+    .then((wc) => {
+      wc.setWindowLayoutFullScreen(true);
+      const wp = wc.getWindowProperties();
+      const vpW = uiContext!.px2vp(wp.windowRect.width);
+      const vpH = uiContext!.px2vp(wp.windowRect.height);
+      this.currentBreakpoint = Math.min(vpW, vpH) >= 600 ? 'md' : 'sm';
+      this.updateContentSize(vpW, vpH);
 
-这样可以避免手机屏幕横向空间不足，也让平板更接近大屏操作习惯。
+      wc.on('windowSizeChange', (size: window.Size) => {
+        const w = uiContext!.px2vp(size.width);
+        const h = uiContext!.px2vp(size.height);
+        this.currentBreakpoint = Math.min(w, h) >= 600 ? 'md' : 'sm';
+        this.updateContentSize(w, h);
+      });
+    })
+    .catch((e: Error) => { Logger.error('Fullscreen error: ' + JSON.stringify(e)); });
 
-### 3. 转盘适配
+  this.checkDaily();
+}
+```
 
-`WheelView.ets` 从 `AppStorage` 中读取：
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `aboutToAppear(): void {` | 页面即将显示时执行初始化逻辑 |
+| `window.getLastWindow(context)` | 获取当前应用最后创建的窗口对象 |
+| `.then((wc) => {` | 获取窗口成功后进入回调，`wc` 是窗口实例 |
+| `wc.setWindowLayoutFullScreen(true);` | 将窗口设置为全屏布局，内容可覆盖完整窗口区域 |
+| `const wp = wc.getWindowProperties();` | 获取窗口属性，包含窗口宽高 |
+| `const vpW = uiContext!.px2vp(wp.windowRect.width);` | 将窗口像素宽度转换为 ArkUI 使用的 vp 单位 |
+| `const vpH = uiContext!.px2vp(wp.windowRect.height);` | 将窗口像素高度转换为 vp 单位 |
+| `this.currentBreakpoint = Math.min(vpW, vpH) >= 600 ? 'md' : 'sm';` | 用较短边判断设备类型，短边大于等于 600 走平板布局，否则走手机布局 |
+| `this.updateContentSize(vpW, vpH);` | 根据窗口宽高计算真实内容区域 |
+| `wc.on('windowSizeChange', (size: window.Size) => {` | 监听窗口尺寸变化，用于横竖屏切换 |
+| `const w = uiContext!.px2vp(size.width);` | 将变化后的窗口宽度转换为 vp |
+| `const h = uiContext!.px2vp(size.height);` | 将变化后的窗口高度转换为 vp |
+| `this.currentBreakpoint = Math.min(w, h) >= 600 ? 'md' : 'sm';` | 旋转后重新判断手机/平板布局 |
+| `this.updateContentSize(w, h);` | 旋转后重新计算内容区域 |
+| `});` | 结束窗口尺寸变化监听 |
+| `})` | 结束窗口获取成功回调 |
+| `.catch((e: Error) => { Logger.error(...); });` | 如果窗口获取失败，写入日志 |
+| `this.checkDaily();` | 检查每日签到状态 |
+| `}` | 结束 `aboutToAppear` 方法 |
+
+### 3. 计算真实内容区域
+
+代码：
+
+```ts
+updateContentSize(fullW: number, fullH: number): void {
+  const isSmallScreen: boolean = this.currentBreakpoint === 'sm';
+  const sidebarW = isSmallScreen ? 0 : 90;
+  const bottomTabH = isSmallScreen ? (fullW > fullH ? 50 : 64) : 0;
+  const cw = fullW - sidebarW;
+  const ch = fullH - bottomTabH;
+  AppStorage.setOrCreate('contentWidth', cw);
+  AppStorage.setOrCreate('contentHeight', ch);
+  AppStorage.setOrCreate('isLandscape', cw > ch);
+}
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `updateContentSize(fullW: number, fullH: number): void {` | 定义内容区域计算方法，参数是窗口完整宽高 |
+| `const isSmallScreen: boolean = this.currentBreakpoint === 'sm';` | 判断当前是否是手机小屏布局 |
+| `const sidebarW = isSmallScreen ? 0 : 90;` | 手机没有侧边栏，平板侧边 Tab 占用 90vp 宽度 |
+| `const bottomTabH = isSmallScreen ? (fullW > fullH ? 50 : 64) : 0;` | 手机使用底部 Tab，横屏预留 50vp，竖屏预留 64vp；平板没有底部 Tab |
+| `const cw = fullW - sidebarW;` | 用完整窗口宽度减去侧边栏宽度，得到业务内容宽度 |
+| `const ch = fullH - bottomTabH;` | 用完整窗口高度减去底部 Tab 高度，得到业务内容高度 |
+| `AppStorage.setOrCreate('contentWidth', cw);` | 将业务内容宽度写入全局存储，供子组件读取 |
+| `AppStorage.setOrCreate('contentHeight', ch);` | 将业务内容高度写入全局存储，供子组件读取 |
+| `AppStorage.setOrCreate('isLandscape', cw > ch);` | 根据内容区域宽高判断是否为横屏 |
+| `}` | 结束内容区域计算方法 |
+
+这一段是多端适配的核心。之前手机底部 Tab 超出屏幕，就是因为子页面按整屏高度绘制，没有扣掉底部 Tab。现在 `contentHeight` 已经扣除了底部 Tab。
+
+### 4. 根据设备切换 Tab 位置
+
+代码：
+
+```ts
+Tabs({
+  barPosition: this.currentBreakpoint === 'sm' ? BarPosition.End : BarPosition.Start,
+  index: this.currentIndex
+}) {
+  TabContent() { WheelView() }
+    .tabBar(this.tabBuilder(0))
+  TabContent() { ScratchCardView() }
+    .tabBar(this.tabBuilder(1))
+  TabContent() { HistoryView() }
+    .tabBar(this.tabBuilder(2))
+}
+.vertical(this.currentBreakpoint !== 'sm')
+.barWidth(this.currentBreakpoint === 'sm' ? '100%' : 90)
+.barHeight(this.currentBreakpoint === 'sm' ? undefined : '100%')
+.width(StyleConstants.FULL_PERCENT)
+.height(StyleConstants.FULL_PERCENT)
+.onChange((idx: number) => { this.currentIndex = idx; })
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `Tabs({` | 创建 Tab 容器 |
+| `barPosition: this.currentBreakpoint === 'sm' ? BarPosition.End : BarPosition.Start,` | 手机将 Tab 放在底部，平板将 Tab 放在左侧 |
+| `index: this.currentIndex` | 设置当前选中的 Tab |
+| `}) {` | 结束 Tabs 参数并开始声明 Tab 内容 |
+| `TabContent() { WheelView() }` | 第一个 Tab 显示转盘页面 |
+| `.tabBar(this.tabBuilder(0))` | 给转盘 Tab 使用自定义 Tab 按钮 |
+| `TabContent() { ScratchCardView() }` | 第二个 Tab 显示刮刮乐页面 |
+| `.tabBar(this.tabBuilder(1))` | 给刮刮乐 Tab 使用自定义 Tab 按钮 |
+| `TabContent() { HistoryView() }` | 第三个 Tab 显示历史记录页面 |
+| `.tabBar(this.tabBuilder(2))` | 给历史记录 Tab 使用自定义 Tab 按钮 |
+| `}` | 结束 Tab 内容声明 |
+| `.vertical(this.currentBreakpoint !== 'sm')` | 平板使用竖向 Tab，手机使用横向底部 Tab |
+| `.barWidth(this.currentBreakpoint === 'sm' ? '100%' : 90)` | 手机 Tab 宽度占满底部，平板侧边 Tab 宽度为 90vp |
+| `.barHeight(this.currentBreakpoint === 'sm' ? undefined : '100%')` | 平板侧边 Tab 高度占满，手机高度交给系统默认计算 |
+| `.width(StyleConstants.FULL_PERCENT)` | Tabs 宽度占满父容器 |
+| `.height(StyleConstants.FULL_PERCENT)` | Tabs 高度占满父容器 |
+| `.onChange((idx: number) => { this.currentIndex = idx; })` | 用户切换 Tab 时更新当前索引 |
+
+### 5. 签到条改为浮层
+
+代码：
+
+```ts
+if (this.currentIndex === 0) {
+  Row() {
+    if (this.checkedIn) {
+      Text(`已签到 ${this.checkInDays} 天`)
+        .fontSize(11).fontColor('rgba(255,215,0,0.6)')
+    } else {
+      Text('签到')
+        .fontSize(12).fontColor('#FFD700').fontWeight(600)
+        .onClick(() => { this.doCheckIn(); })
+    }
+  }
+  .width('100%')
+  .justifyContent(FlexAlign.End)
+  .padding({ right: 16, top: 8 })
+}
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `if (this.currentIndex === 0) {` | 只有在转盘页面显示签到条 |
+| `Row() {` | 使用横向容器承载签到文字 |
+| `if (this.checkedIn) {` | 判断当天是否已签到 |
+| ``Text(`已签到 ${this.checkInDays} 天`)`` | 已签到时显示连续签到天数 |
+| `.fontSize(11).fontColor('rgba(255,215,0,0.6)')` | 设置已签到文字大小和颜色 |
+| `} else {` | 未签到时显示可点击入口 |
+| `Text('签到')` | 显示签到按钮文字 |
+| `.fontSize(12).fontColor('#FFD700').fontWeight(600)` | 设置签到入口的字体样式 |
+| `.onClick(() => { this.doCheckIn(); })` | 点击后执行签到逻辑 |
+| `}` | 结束签到状态判断 |
+| `}` | 结束 Row 容器 |
+| `.width('100%')` | 签到条宽度占满屏幕 |
+| `.justifyContent(FlexAlign.End)` | 将签到文字靠右显示 |
+| `.padding({ right: 16, top: 8 })` | 设置右上角边距 |
+| `}` | 结束签到条条件渲染 |
+
+这里的关键点是：签到条放在 `Stack` 里作为浮层，不再放在 Tabs 上方的 Column 中，所以不会把手机底部 Tab 挤出屏幕。
+
+## 三、WheelView 的多端适配代码
+
+`WheelView` 负责转盘绘制。它必须保证三件事：
+
+1. 转盘不超出手机横屏屏幕。
+2. GO 按钮始终在转盘中心。
+3. Canvas 旋转中心和视觉中心一致。
+
+### 1. 读取父页面计算出的内容区域
+
+代码：
 
 ```ts
 @StorageProp('contentWidth') contentWidth: number = 360;
 @StorageProp('contentHeight') contentHeight: number = 640;
+@State pageLandscape: boolean = false;
 ```
 
-然后使用同一套尺寸控制：
+逐行解释：
 
-| 对象 | 使用尺寸 |
+| 代码 | 作用 |
 | --- | --- |
-| 主 Canvas | `screenWidth/screenHeight` |
-| 覆盖 Canvas | `screenWidth/screenHeight` |
-| 旋转中心 | `screenWidth / 2`、`screenHeight / 2` |
-| GO 按钮 | 根据较短边缩放 |
-| Stack 容器 | `screenWidth/screenHeight` |
+| `@StorageProp('contentWidth') contentWidth: number = 360;` | 从全局存储读取业务内容宽度，默认 360vp |
+| `@StorageProp('contentHeight') contentHeight: number = 640;` | 从全局存储读取业务内容高度，默认 640vp |
+| `@State pageLandscape: boolean = false;` | 记录当前转盘内容区是否为横屏，变化后会触发 UI 刷新 |
 
-这样解决了手机竖屏 GO 按钮不在中心、手机横屏转盘过大等问题。
+### 2. 根据内容区域计算转盘画布大小
 
-### 4. 刮刮乐适配
+代码：
 
-`ScratchCardView.ets` 同样读取 `contentWidth/contentHeight`，并根据横竖屏决定卡片比例。
+```ts
+updateWheelSize(): void {
+  const w: number = this.contentWidth > 0 ? this.contentWidth : 360;
+  const h: number = this.contentHeight > 0 ? this.contentHeight : 640;
+  this.pageLandscape = w > h;
+  this.screenWidth = w;
+  this.screenHeight = Math.max(this.pageLandscape ? 220 : 320, h);
+}
+```
 
-手机横屏时使用横向卡片：
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `updateWheelSize(): void {` | 定义根据 `AppStorage` 内容区更新转盘尺寸的方法 |
+| `const w: number = this.contentWidth > 0 ? this.contentWidth : 360;` | 如果内容宽度有效就使用它，否则使用 360vp 默认值 |
+| `const h: number = this.contentHeight > 0 ? this.contentHeight : 640;` | 如果内容高度有效就使用它，否则使用 640vp 默认值 |
+| `this.pageLandscape = w > h;` | 根据内容区域判断当前是否横屏 |
+| `this.screenWidth = w;` | 将转盘画布宽度设置为内容宽度 |
+| `this.screenHeight = Math.max(this.pageLandscape ? 220 : 320, h);` | 横屏最小高度 220vp，竖屏最小高度 320vp，避免画布过小 |
+| `}` | 结束方法 |
+
+### 3. 横竖屏切换时直接用窗口尺寸重新计算
+
+代码：
+
+```ts
+updateWheelSizeFromWindow(fullW: number, fullH: number): void {
+  const minDim: number = Math.min(fullW, fullH);
+  const smallScreen: boolean = minDim < 600;
+  const sidebarW: number = smallScreen ? 0 : 90;
+  const bottomTabH: number = smallScreen ? (fullW > fullH ? 50 : 64) : 0;
+  const w: number = fullW - sidebarW;
+  const h: number = fullH - bottomTabH;
+  this.pageLandscape = w > h;
+  this.screenWidth = w;
+  this.screenHeight = Math.max(this.pageLandscape ? 220 : 320, h);
+}
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `updateWheelSizeFromWindow(fullW: number, fullH: number): void {` | 定义根据窗口完整宽高更新转盘尺寸的方法 |
+| `const minDim: number = Math.min(fullW, fullH);` | 取窗口短边，用于判断手机还是平板 |
+| `const smallScreen: boolean = minDim < 600;` | 短边小于 600vp 视为手机布局 |
+| `const sidebarW: number = smallScreen ? 0 : 90;` | 手机没有侧边栏，平板扣除 90vp 侧边 Tab |
+| `const bottomTabH: number = smallScreen ? (fullW > fullH ? 50 : 64) : 0;` | 手机扣除底部 Tab 高度，横屏扣 50vp，竖屏扣 64vp |
+| `const w: number = fullW - sidebarW;` | 计算转盘可用宽度 |
+| `const h: number = fullH - bottomTabH;` | 计算转盘可用高度 |
+| `this.pageLandscape = w > h;` | 根据可用区域判断横竖屏 |
+| `this.screenWidth = w;` | 更新转盘画布宽度 |
+| `this.screenHeight = Math.max(this.pageLandscape ? 220 : 320, h);` | 更新转盘画布高度，并保留最小高度 |
+| `}` | 结束方法 |
+
+这个方法解决横竖屏切换时 `AppStorage` 更新慢一拍的问题。窗口变化时，转盘可以立即用最新窗口尺寸计算。
+
+### 4. 页面出现时监听窗口变化
+
+代码：
+
+```ts
+aboutToAppear(): void {
+  this.updateWheelSize();
+  window.getLastWindow(context)
+    .then((wc) => {
+      wc.setWindowLayoutFullScreen(true);
+      const wp = wc.getWindowProperties();
+      this.updateWheelSizeFromWindow(uiContext!.px2vp(wp.windowRect.width), uiContext!.px2vp(wp.windowRect.height));
+      if (this.canvasDrawn) {
+        this.drawModel.draw(this.canvasContext, this.screenWidth, this.screenHeight);
+      }
+
+      wc.on('windowSizeChange', (size: window.Size) => {
+        this.updateWheelSizeFromWindow(uiContext!.px2vp(size.width), uiContext!.px2vp(size.height));
+        if (this.canvasDrawn) {
+          this.drawModel.draw(this.canvasContext, this.screenWidth, this.screenHeight);
+        }
+      });
+    })
+}
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `aboutToAppear(): void {` | 组件即将显示时执行 |
+| `this.updateWheelSize();` | 先用父页面已经写入的内容尺寸初始化转盘 |
+| `window.getLastWindow(context)` | 获取当前窗口对象 |
+| `.then((wc) => {` | 获取窗口成功后执行回调 |
+| `wc.setWindowLayoutFullScreen(true);` | 设置窗口全屏布局 |
+| `const wp = wc.getWindowProperties();` | 获取当前窗口属性 |
+| `this.updateWheelSizeFromWindow(...);` | 用窗口实际宽高再次校准转盘尺寸 |
+| `if (this.canvasDrawn) {` | 判断 Canvas 是否已经绘制过 |
+| `this.drawModel.draw(this.canvasContext, this.screenWidth, this.screenHeight);` | 如果已经绘制过，就用新尺寸重画转盘 |
+| `}` | 结束绘制判断 |
+| `wc.on('windowSizeChange', (size: window.Size) => {` | 监听横竖屏或窗口大小变化 |
+| `this.updateWheelSizeFromWindow(...);` | 窗口变化后重新计算转盘尺寸 |
+| `if (this.canvasDrawn) {` | 判断 Canvas 是否可重绘 |
+| `this.drawModel.draw(...);` | 使用新宽高重绘转盘 |
+| `}` | 结束重绘判断 |
+| `});` | 结束窗口变化监听 |
+| `})` | 结束窗口获取成功回调 |
+| `}` | 结束 `aboutToAppear` 方法 |
+
+### 5. Canvas、旋转中心、GO 按钮共用同一套尺寸
+
+代码：
+
+```ts
+Stack({ alignContent: Alignment.Center }) {
+  Canvas(this.canvasContext)
+    .width(this.screenWidth)
+    .height(this.screenHeight)
+    .onReady(() => {
+      this.canvasDrawn = true;
+      this.drawModel.draw(this.canvasContext, this.screenWidth, this.screenHeight);
+    })
+    .rotate({
+      x: 0, y: 0, z: 1, angle: this.rotateDegree,
+      centerX: this.screenWidth / CommonConstants.TWO,
+      centerY: this.screenHeight / CommonConstants.TWO,
+    })
+
+  Canvas(this.overlayContext)
+    .width(this.screenWidth)
+    .height(this.screenHeight)
+    .hitTestBehavior(HitTestMode.None)
+
+  Button('GO')
+    .fontSize(Math.min(this.screenWidth, this.screenHeight) * 0.055)
+    .width(Math.min(this.screenWidth, this.screenHeight) * 0.14)
+    .height(Math.min(this.screenWidth, this.screenHeight) * 0.14)
+}
+.width(this.screenWidth)
+.height(this.screenHeight)
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `Stack({ alignContent: Alignment.Center }) {` | 创建层叠容器，并让子元素默认居中 |
+| `Canvas(this.canvasContext)` | 创建主 Canvas，用于绘制转盘 |
+| `.width(this.screenWidth)` | Canvas 宽度使用适配后的内容宽度 |
+| `.height(this.screenHeight)` | Canvas 高度使用适配后的内容高度 |
+| `.onReady(() => {` | Canvas 准备完成后执行 |
+| `this.canvasDrawn = true;` | 标记 Canvas 已经可以重绘 |
+| `this.drawModel.draw(...);` | 按当前宽高绘制转盘 |
+| `})` | 结束 Canvas ready 回调 |
+| `.rotate({` | 给 Canvas 添加旋转变换 |
+| `x: 0, y: 0, z: 1, angle: this.rotateDegree,` | 设置绕 Z 轴旋转，旋转角度为 `rotateDegree` |
+| `centerX: this.screenWidth / CommonConstants.TWO,` | 旋转中心 X 设置为画布宽度的一半 |
+| `centerY: this.screenHeight / CommonConstants.TWO,` | 旋转中心 Y 设置为画布高度的一半 |
+| `})` | 结束旋转配置 |
+| `Canvas(this.overlayContext)` | 创建覆盖层 Canvas，用于绘制指针、高光等固定元素 |
+| `.width(this.screenWidth)` | 覆盖层宽度与主 Canvas 一致 |
+| `.height(this.screenHeight)` | 覆盖层高度与主 Canvas 一致 |
+| `.hitTestBehavior(HitTestMode.None)` | 覆盖层不拦截点击事件 |
+| `Button('GO')` | 创建中心 GO 按钮 |
+| `.fontSize(Math.min(...) * 0.055)` | 按较短边计算按钮字体大小 |
+| `.width(Math.min(...) * 0.14)` | 按较短边计算按钮宽度 |
+| `.height(Math.min(...) * 0.14)` | 按较短边计算按钮高度 |
+| `}` | 结束 Stack 内容 |
+| `.width(this.screenWidth)` | Stack 宽度与 Canvas 一致 |
+| `.height(this.screenHeight)` | Stack 高度与 Canvas 一致 |
+
+这段代码解决了 GO 按钮偏离中心的问题。主 Canvas、覆盖 Canvas、旋转中心、Stack 尺寸全部使用 `screenWidth/screenHeight`，因此视觉中心一致。
+
+## 四、ScratchCardView 的多端适配代码
+
+`ScratchCardView` 负责刮刮乐。它的适配目标是：
+
+1. 平板竖屏初始涂层不出屏。
+2. 手机竖屏不被底部 Tab 遮挡。
+3. 手机横屏改成横向刮刮卡。
+4. 横竖屏切换后立即重算 Canvas 尺寸。
+
+### 1. 读取内容尺寸并维护本地横屏状态
+
+代码：
+
+```ts
+@State scaleFactor: number = 1.0;
+@StorageProp('contentWidth') contentWidth: number = 360;
+@StorageProp('contentHeight') contentHeight: number = 640;
+@State pageLandscape: boolean = false;
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `@State scaleFactor: number = 1.0;` | 当前页面缩放系数，用于字体、边距、刮擦半径等 |
+| `@StorageProp('contentWidth') contentWidth: number = 360;` | 从全局存储读取业务内容宽度 |
+| `@StorageProp('contentHeight') contentHeight: number = 640;` | 从全局存储读取业务内容高度 |
+| `@State pageLandscape: boolean = false;` | 记录当前刮刮乐内容区域是否横屏 |
+
+### 2. 页面出现时初始化并监听窗口变化
+
+代码：
+
+```ts
+aboutToAppear(): void {
+  this.updateCanvasSize();
+  if (this.canvasInitialized) {
+    this.drawCard();
+  }
+  window.getLastWindow(uiContext!.getHostContext()!)
+    .then((windowClass: window.Window) => {
+      const wp = windowClass.getWindowProperties();
+      this.updateCanvasSizeFromWindow(uiContext!.px2vp(wp.windowRect.width), uiContext!.px2vp(wp.windowRect.height));
+      if (this.canvasInitialized) {
+        this.drawCard();
+      }
+      windowClass.on('windowSizeChange', (size: window.Size) => {
+        this.updateCanvasSizeFromWindow(uiContext!.px2vp(size.width), uiContext!.px2vp(size.height));
+        if (this.canvasInitialized) {
+          this.drawCard();
+        }
+      });
+    })
+    .catch(() => {});
+}
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `aboutToAppear(): void {` | 组件即将显示时执行 |
+| `this.updateCanvasSize();` | 先用父页面提供的内容宽高计算 Canvas 区域 |
+| `if (this.canvasInitialized) {` | 如果 Canvas 已经初始化过 |
+| `this.drawCard();` | 立即按新尺寸重绘刮刮卡 |
+| `}` | 结束初始化判断 |
+| `window.getLastWindow(uiContext!.getHostContext()!)` | 获取当前窗口 |
+| `.then((windowClass: window.Window) => {` | 获取窗口成功后执行 |
+| `const wp = windowClass.getWindowProperties();` | 获取窗口属性 |
+| `this.updateCanvasSizeFromWindow(...);` | 用实际窗口尺寸重新计算 Canvas 区域 |
+| `if (this.canvasInitialized) {` | 判断 Canvas 是否已经可用 |
+| `this.drawCard();` | 如果可用就重绘卡片 |
+| `}` | 结束判断 |
+| `windowClass.on('windowSizeChange', (size: window.Size) => {` | 监听横竖屏切换 |
+| `this.updateCanvasSizeFromWindow(...);` | 尺寸变化后重新计算 Canvas 区域 |
+| `if (this.canvasInitialized) {` | 判断是否可以重绘 |
+| `this.drawCard();` | 按新尺寸重绘刮刮卡 |
+| `}` | 结束重绘判断 |
+| `});` | 结束窗口变化监听 |
+| `})` | 结束窗口获取成功回调 |
+| `.catch(() => {});` | 获取窗口失败时静默处理，避免页面崩溃 |
+| `}` | 结束 `aboutToAppear` 方法 |
+
+### 3. 从父页面内容尺寸计算 Canvas
+
+代码：
+
+```ts
+updateCanvasSize(): void {
+  const fullW: number = this.contentWidth > 0 ? this.contentWidth : 360;
+  const fullH: number = this.contentHeight > 0 ? this.contentHeight : 640;
+  this.applyCanvasSize(fullW, fullH);
+}
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `updateCanvasSize(): void {` | 定义使用父页面内容尺寸更新 Canvas 的方法 |
+| `const fullW: number = this.contentWidth > 0 ? this.contentWidth : 360;` | 内容宽度有效则使用内容宽度，否则使用默认 360vp |
+| `const fullH: number = this.contentHeight > 0 ? this.contentHeight : 640;` | 内容高度有效则使用内容高度，否则使用默认 640vp |
+| `this.applyCanvasSize(fullW, fullH);` | 将宽高交给统一计算方法处理 |
+| `}` | 结束方法 |
+
+### 4. 从窗口尺寸计算 Canvas
+
+代码：
+
+```ts
+updateCanvasSizeFromWindow(fullW: number, fullH: number): void {
+  const minDim: number = Math.min(fullW, fullH);
+  const smallScreen: boolean = minDim < 600;
+  const sidebarW: number = smallScreen ? 0 : 90;
+  const bottomTabH: number = smallScreen ? (fullW > fullH ? 50 : 64) : 0;
+  this.applyCanvasSize(fullW - sidebarW, fullH - bottomTabH);
+}
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `updateCanvasSizeFromWindow(fullW: number, fullH: number): void {` | 定义使用窗口完整宽高更新 Canvas 的方法 |
+| `const minDim: number = Math.min(fullW, fullH);` | 取窗口短边判断设备类型 |
+| `const smallScreen: boolean = minDim < 600;` | 短边小于 600vp 判定为手机 |
+| `const sidebarW: number = smallScreen ? 0 : 90;` | 手机没有侧边栏，平板扣除 90vp 侧边 Tab |
+| `const bottomTabH: number = smallScreen ? (fullW > fullH ? 50 : 64) : 0;` | 手机扣除底部 Tab 高度，横屏 50vp，竖屏 64vp |
+| `this.applyCanvasSize(fullW - sidebarW, fullH - bottomTabH);` | 将扣除导航后的内容区域交给统一计算方法 |
+| `}` | 结束方法 |
+
+### 5. 统一计算刮刮乐 Canvas 区域
+
+代码：
+
+```ts
+applyCanvasSize(fullW: number, fullH: number): void {
+  const minDim: number = Math.min(fullW, fullH);
+  this.pageLandscape = fullW > fullH;
+  const compactLandscape: boolean = this.pageLandscape && fullH < 480;
+
+  this.scaleFactor = Math.max(0.75, Math.min(minDim / 360, 1.35));
+  this.screenWidth = fullW;
+
+  const titleArea: number = compactLandscape ? 48 * this.scaleFactor : 86 * this.scaleFactor;
+  const bottomArea: number = compactLandscape ? 24 * this.scaleFactor : 40 * this.scaleFactor;
+  const safePadding: number = compactLandscape ? 8 * this.scaleFactor : 14 * this.scaleFactor;
+  this.screenHeight = Math.max(160, fullH - titleArea - bottomArea - safePadding);
+}
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `applyCanvasSize(fullW: number, fullH: number): void {` | 定义统一的 Canvas 尺寸计算方法 |
+| `const minDim: number = Math.min(fullW, fullH);` | 取内容区域短边，用于计算缩放比例 |
+| `this.pageLandscape = fullW > fullH;` | 根据内容宽高判断是否横屏 |
+| `const compactLandscape: boolean = this.pageLandscape && fullH < 480;` | 横屏且高度小于 480vp 时启用紧凑横屏布局 |
+| `this.scaleFactor = Math.max(0.75, Math.min(minDim / 360, 1.35));` | 根据短边计算缩放系数，并限制在 0.75 到 1.35 之间 |
+| `this.screenWidth = fullW;` | Canvas 宽度使用内容宽度 |
+| `const titleArea: number = compactLandscape ? 48 * this.scaleFactor : 86 * this.scaleFactor;` | 估算标题区域高度，手机横屏更小 |
+| `const bottomArea: number = compactLandscape ? 24 * this.scaleFactor : 40 * this.scaleFactor;` | 估算底部进度区域高度，手机横屏更小 |
+| `const safePadding: number = compactLandscape ? 8 * this.scaleFactor : 14 * this.scaleFactor;` | 预留安全边距，避免贴边 |
+| `this.screenHeight = Math.max(160, fullH - titleArea - bottomArea - safePadding);` | 计算 Canvas 可绘制高度，最小不低于 160vp |
+| `}` | 结束方法 |
+
+这一段解决了刮刮乐初始涂层出屏的问题。卡片不再按照整屏高度居中，而是在扣除标题、底部进度、Tab 后的 Canvas 区域内居中。
+
+### 6. 根据横竖屏决定刮刮卡比例
+
+代码：
+
+```ts
+drawCard(): void {
+  const ctx = this.canvasContext;
+  let cw: number;
+  let ch: number;
+  if (this.compactLandscape) {
+    ch = Math.min(this.screenHeight * 0.76, 220);
+    cw = Math.min(ch * 2.05, this.screenWidth * 0.78);
+  } else if (this.pageLandscape) {
+    ch = Math.min(this.screenHeight * 0.72, 320);
+    cw = Math.min(ch * 1.7, this.screenWidth * 0.82);
+  } else {
+    cw = Math.min(this.screenWidth * 0.78, 420);
+    ch = Math.min(cw * 1.18, this.screenHeight * 0.82);
+  }
+  this.cardX = (this.screenWidth - cw) / 2;
+  this.cardY = (this.screenHeight - ch) / 2;
+  this.cardW = cw;
+  this.cardH = ch;
+}
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `drawCard(): void {` | 定义绘制刮刮卡的方法 |
+| `const ctx = this.canvasContext;` | 获取 Canvas 绘图上下文 |
+| `let cw: number;` | 声明卡片宽度变量 |
+| `let ch: number;` | 声明卡片高度变量 |
+| `if (this.compactLandscape) {` | 判断是否是手机横屏紧凑布局 |
+| `ch = Math.min(this.screenHeight * 0.76, 220);` | 手机横屏下卡片高度最多 220vp，占 Canvas 高度 76% |
+| `cw = Math.min(ch * 2.05, this.screenWidth * 0.78);` | 手机横屏下卡片宽度约为高度的 2.05 倍，形成横向卡片 |
+| `} else if (this.pageLandscape) {` | 如果不是紧凑横屏，但仍然是横屏 |
+| `ch = Math.min(this.screenHeight * 0.72, 320);` | 普通横屏下卡片高度最多 320vp |
+| `cw = Math.min(ch * 1.7, this.screenWidth * 0.82);` | 普通横屏下卡片宽度为高度的 1.7 倍 |
+| `} else {` | 竖屏布局 |
+| `cw = Math.min(this.screenWidth * 0.78, 420);` | 竖屏下卡片宽度占屏幕 78%，最大 420vp |
+| `ch = Math.min(cw * 1.18, this.screenHeight * 0.82);` | 竖屏下卡片高度略高于宽度，但不超过 Canvas 高度 82% |
+| `}` | 结束横竖屏判断 |
+| `this.cardX = (this.screenWidth - cw) / 2;` | 让卡片在 Canvas 中水平居中 |
+| `this.cardY = (this.screenHeight - ch) / 2;` | 让卡片在 Canvas 中垂直居中 |
+| `this.cardW = cw;` | 保存卡片宽度，供触摸和绘制使用 |
+| `this.cardH = ch;` | 保存卡片高度，供触摸和绘制使用 |
+| `}` | 结束绘制方法 |
+
+### 7. 紧凑横屏判断
+
+代码：
+
+```ts
+private get compactLandscape(): boolean {
+  return this.pageLandscape && this.screenHeight < 360;
+}
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `private get compactLandscape(): boolean {` | 定义只在组件内部使用的计算属性 |
+| `return this.pageLandscape && this.screenHeight < 360;` | 当前是横屏且 Canvas 高度小于 360vp 时，使用紧凑横屏布局 |
+| `}` | 结束计算属性 |
+
+### 8. 横屏时压缩标题区域
+
+代码：
+
+```ts
+Text('刮刮乐')
+  .fontSize((this.compactLandscape ? 18 : 24) * this.scaleFactor)
+  .margin({
+    top: (this.compactLandscape ? 6 : 12) * this.scaleFactor,
+    bottom: (this.compactLandscape ? 4 : 8) * this.scaleFactor
+  })
+
+if (!this.compactLandscape) {
+  Text(this.isRevealed ? '恭喜中奖！' : '手指刮开涂层看看手气')
+    .fontSize(14 * this.scaleFactor)
+    .margin({ bottom: 16 * this.scaleFactor })
+}
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `Text('刮刮乐')` | 显示刮刮乐标题 |
+| `.fontSize((this.compactLandscape ? 18 : 24) * this.scaleFactor)` | 横屏紧凑模式下标题字体变小 |
+| `.margin({` | 开始设置标题外边距 |
+| `top: (this.compactLandscape ? 6 : 12) * this.scaleFactor,` | 横屏紧凑模式下减小顶部间距 |
+| `bottom: (this.compactLandscape ? 4 : 8) * this.scaleFactor` | 横屏紧凑模式下减小底部间距 |
+| `})` | 结束标题边距设置 |
+| `if (!this.compactLandscape) {` | 如果不是手机横屏紧凑布局 |
+| `Text(this.isRevealed ? '恭喜中奖！' : '手指刮开涂层看看手气')` | 显示副标题 |
+| `.fontSize(14 * this.scaleFactor)` | 副标题字体按比例缩放 |
+| `.margin({ bottom: 16 * this.scaleFactor })` | 设置副标题底部间距 |
+| `}` | 手机横屏紧凑模式下不显示副标题，节省高度 |
+
+### 9. Canvas 容器使用真实绘制尺寸
+
+代码：
+
+```ts
+Stack()
+  .width(this.screenWidth)
+  .height(this.screenHeight) {
+  Canvas(this.canvasContext)
+    .width(this.screenWidth)
+    .height(this.screenHeight)
+    .onReady(() => {
+      this.updateCanvasSize();
+      if (!this.canvasInitialized) {
+        this.canvasInitialized = true;
+        this.initCard();
+      } else {
+        this.drawCard();
+      }
+    })
+
+  Canvas(this.sparkleContext)
+    .width(this.screenWidth)
+    .height(this.screenHeight)
+    .hitTestBehavior(HitTestMode.None)
+}
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `Stack()` | 创建刮刮卡和粒子层的叠放容器 |
+| `.width(this.screenWidth)` | 容器宽度等于计算后的 Canvas 宽度 |
+| `.height(this.screenHeight) {` | 容器高度等于计算后的 Canvas 高度 |
+| `Canvas(this.canvasContext)` | 创建主 Canvas，用于绘制刮刮卡 |
+| `.width(this.screenWidth)` | 主 Canvas 宽度和容器一致 |
+| `.height(this.screenHeight)` | 主 Canvas 高度和容器一致 |
+| `.onReady(() => {` | Canvas 准备完成后执行 |
+| `this.updateCanvasSize();` | 再次确保 Canvas 尺寸是最新值 |
+| `if (!this.canvasInitialized) {` | 如果 Canvas 第一次初始化 |
+| `this.canvasInitialized = true;` | 标记 Canvas 已初始化 |
+| `this.initCard();` | 初始化并绘制第一张刮刮卡 |
+| `} else {` | 如果 Canvas 已经初始化过 |
+| `this.drawCard();` | 直接按当前尺寸重绘 |
+| `}` | 结束初始化判断 |
+| `})` | 结束 Canvas ready 回调 |
+| `Canvas(this.sparkleContext)` | 创建粒子 Canvas，用于刮擦时的火花效果 |
+| `.width(this.screenWidth)` | 粒子 Canvas 宽度和主 Canvas 一致 |
+| `.height(this.screenHeight)` | 粒子 Canvas 高度和主 Canvas 一致 |
+| `.hitTestBehavior(HitTestMode.None)` | 粒子层不拦截触摸事件 |
+| `}` | 结束 Stack 容器 |
+
+这段代码保证了“布局区域”和“绘制坐标区域”一致。之前刮刮卡出屏，就是因为 Canvas 显示区域和绘制区域不是同一套高度。
+
+## 五、不同设备上的显示策略
+
+| 场景 | Tab 位置 | 转盘策略 | 刮刮乐策略 |
+| --- | --- | --- | --- |
+| 手机竖屏 | 底部 Tab | 扣除底部 Tab 后绘制，GO 居中 | 竖向卡片，扣除标题和底部进度 |
+| 手机横屏 | 底部 Tab | 扣除底部 Tab，高度压缩，转盘缩小 | 横向卡片，隐藏副标题，压缩上下间距 |
+| 平板竖屏 | 左侧 Tab | 扣除左侧 90vp 后绘制 | 竖向卡片，居中显示 |
+| 平板横屏 | 左侧 Tab | 扣除左侧 90vp 后绘制 | 横向/宽屏卡片，内容居中 |
+
+## 六、为什么这样可以解决问题
+
+### 1. 解决底部 Tab 超出屏幕
+
+手机模式下：
+
+```ts
+const bottomTabH = isSmallScreen ? (fullW > fullH ? 50 : 64) : 0;
+const ch = fullH - bottomTabH;
+```
+
+这两行会提前把底部 Tab 的高度扣掉。子页面拿到的 `contentHeight` 已经不是整屏高度，而是真正可用高度。
+
+### 2. 解决 GO 按钮不在转盘中心
+
+转盘中：
+
+```ts
+centerX: this.screenWidth / CommonConstants.TWO,
+centerY: this.screenHeight / CommonConstants.TWO,
+```
+
+同时：
+
+```ts
+Stack({ alignContent: Alignment.Center })
+.width(this.screenWidth)
+.height(this.screenHeight)
+```
+
+旋转中心、Canvas 尺寸、Stack 尺寸全部统一，所以 GO 按钮会落在转盘中心。
+
+### 3. 解决手机横屏转盘过大
+
+手机横屏时：
+
+```ts
+const bottomTabH: number = smallScreen ? (fullW > fullH ? 50 : 64) : 0;
+const h: number = fullH - bottomTabH;
+this.screenHeight = Math.max(this.pageLandscape ? 220 : 320, h);
+```
+
+这会把横屏手机可用高度压到合理范围，转盘的基准尺寸也会随之变小。
+
+### 4. 解决手机横屏刮刮乐超出屏幕
+
+手机横屏时：
 
 ```ts
 if (this.compactLandscape) {
@@ -250,62 +4379,182 @@ if (this.compactLandscape) {
 }
 ```
 
-竖屏时使用更接近普通卡片的比例：
+卡片高度被限制，宽度按高度放大，所以显示为横向卡片，不再使用竖屏那种高卡片比例。
 
-```ts
-cw = Math.min(this.screenWidth * 0.78, 420);
-ch = Math.min(cw * 1.18, this.screenHeight * 0.82);
+## 七、后续维护建议
+
+1. 新增页面时，优先读取 `contentWidth` 和 `contentHeight`，不要直接使用窗口完整宽高。
+2. 新增 Canvas 组件时，Canvas 的 `.width()`、`.height()`、绘图 `clearRect()`、中心点计算要使用同一套尺寸。
+3. 手机横屏高度很小，尽量隐藏说明性副标题，保留核心交互。
+4. 平板布局不要使用底部 Tab 占位，应该通过侧边栏宽度扣除内容区。
+5. 所有横竖屏切换都建议监听 `windowSizeChange` 后主动重绘 Canvas。
+
+---
+
+## 第四部分：自由流转功能实现说明（README4）
+
+> 来源文件：`README4.md`
+
+# README4 - 自由流转功能实现说明
+
+本文介绍本项目如何接入 HarmonyOS 自由流转中的“跨端迁移/应用接续”能力。
+
+当前实现的是第一版稳定方案：迁移轻量业务状态，不迁移 Canvas 像素、不迁移正在执行的动画。
+
+## 一、功能目标
+
+用户在手机端使用抽奖应用时，可以通过 HarmonyOS 系统的应用接续入口，将任务流转到平板端继续使用。
+
+接续后，平板端应恢复以下状态：
+
+| 状态 | 说明 |
+| --- | --- |
+| 当前 Tab | 例如用户在手机上停留在“刮刮乐”或“记录”页，平板端继续打开同一页 |
+| 抽奖历史 | 转盘和刮刮乐写入的 `wheel_history` 记录 |
+| 签到日期 | `last_checkin` |
+| 连续签到天数 | `checkin_streak` |
+
+不迁移以下状态：
+
+| 状态 | 原因 |
+| --- | --- |
+| 转盘旋转动画 | 动画是瞬时状态，跨端恢复意义不大 |
+| Canvas 涂层像素 | 数据量大且恢复复杂 |
+| 彩纸/星星粒子动画 | 视觉效果可在目标端重新生成 |
+
+## 二、涉及文件
+
+| 文件 | 作用 |
+| --- | --- |
+| `CanvasComponent-master/entry/src/main/module.json5` | 声明应用支持自由流转 |
+| `CanvasComponent-master/entry/src/main/ets/entryability/EntryAbility.ts` | 保存源端状态，恢复目标端状态 |
+| `CanvasComponent-master/entry/src/main/ets/pages/CanvasPage.ets` | 将当前 Tab 接入全局状态，供迁移使用 |
+
+## 三、整体实现流程
+
+自由流转的核心流程如下：
+
+1. 在 `module.json5` 中配置 `"continuable": true`。
+2. 用户在设备 A 上使用应用。
+3. 系统发起应用接续。
+4. 设备 A 调用 `EntryAbility.onContinue()`。
+5. 应用把当前页面、历史记录、签到状态写入 `wantParam`。
+6. 设备 B 启动同一个应用。
+7. 设备 B 调用 `onCreate()` 或 `onNewWant()`。
+8. 应用从 `want.parameters` 中取出迁移数据。
+9. 将迁移数据写回 `AppStorage`。
+10. 页面通过 `@StorageLink` / `@StorageProp` 自动恢复显示。
+
+## 四、开启自由流转能力
+
+文件：
+
+```txt
+CanvasComponent-master/entry/src/main/module.json5
 ```
 
-这样可以避免平板竖屏、手机横屏时刮刮乐初始画面跑出屏幕。
+关键代码：
 
-### 5. 适配场景总结
+```json5
+"orientation": "auto_rotation",
+"continuable": true,
+"exported": true,
+```
 
-| 场景 | 显示策略 |
+逐行解释：
+
+| 代码 | 作用 |
 | --- | --- |
-| 手机竖屏 | 底部 Tab，转盘居中，刮刮乐竖向卡片 |
-| 手机横屏 | 底部 Tab，转盘缩小，刮刮乐横向卡片 |
-| 平板竖屏 | 左侧 Tab，内容区域扣除侧边栏 |
-| 平板横屏 | 左侧 Tab，Canvas 使用宽屏内容区 |
+| `"orientation": "auto_rotation",` | 应用支持自动旋转，适配手机和平板横竖屏 |
+| `"continuable": true,` | 声明该 Ability 支持跨端迁移/应用接续 |
+| `"exported": true,` | 允许系统从外部入口启动该 Ability |
 
-## 五、自由流转实现
-
-自由流转内容来自 `README4.md`，当前实现的是 HarmonyOS 自由流转中的“跨端迁移 / 应用接续”能力。
-
-### 1. 实现目标
-
-用户在手机端使用应用后，可以通过系统接续入口流转到平板继续使用。
-
-当前迁移的数据：
-
-| 数据 | 字段 | 说明 |
-| --- | --- | --- |
-| 当前 Tab | `currentIndex` | 恢复转盘、刮刮乐或记录页 |
-| 抽奖历史 | `wheel_history` | 恢复历史记录 |
-| 签到日期 | `last_checkin` | 恢复签到状态 |
-| 连续签到天数 | `checkin_streak` | 恢复连续天数 |
-
-暂不迁移：
-
-| 数据 | 原因 |
-| --- | --- |
-| Canvas 像素 | 数据量大，且不同设备尺寸不一致 |
-| 转盘旋转中动画 | 瞬时状态，跨端恢复意义不大 |
-| 粒子动画 | 可在目标端重新生成 |
-
-### 2. 开启接续能力
-
-在 `module.json5` 中配置：
+其中最关键的是：
 
 ```json5
 "continuable": true
 ```
 
-作用：告诉系统当前 `EntryAbility` 支持跨端迁移。
+如果没有这一行，系统会认为当前 Ability 不支持应用接续。
 
-### 3. 源端保存状态
+## 五、EntryAbility 的实现
 
-在 `EntryAbility.ts` 中实现：
+文件：
+
+```txt
+CanvasComponent-master/entry/src/main/ets/entryability/EntryAbility.ts
+```
+
+### 1. 导入接续需要的类型
+
+代码：
+
+```ts
+import { AbilityConstant, UIAbility, Want } from '@kit.AbilityKit';
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `AbilityConstant` | 提供 `OnContinueResult` 等 Ability 常量 |
+| `UIAbility` | 当前应用入口 Ability 的基类 |
+| `Want` | Ability 启动参数类型，目标端通过它接收迁移数据 |
+
+### 2. 应用创建时初始化并恢复数据
+
+代码：
+
+```ts
+onCreate(want: Want, launchParam: AbilityConstant.LaunchParam) {
+  this.initStorage();
+  this.restoreContinueData(want);
+  hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onCreate');
+}
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `onCreate(want: Want, launchParam: AbilityConstant.LaunchParam) {` | Ability 创建时执行，目标设备首次接续启动时会走这里 |
+| `this.initStorage();` | 初始化需要迁移和持久化的全局状态 |
+| `this.restoreContinueData(want);` | 从 `want.parameters` 中恢复迁移数据 |
+| `hilog.info(..., 'Ability onCreate');` | 打印生命周期日志，方便 DevEco 日志排查 |
+| `}` | 结束 `onCreate` 方法 |
+
+### 3. 初始化全局和持久状态
+
+代码：
+
+```ts
+private initStorage(): void {
+  AppStorage.setOrCreate('currentIndex', AppStorage.get<number>('currentIndex') || 0);
+  PersistentStorage.persistProp('wheel_history', '');
+  PersistentStorage.persistProp('last_checkin', '');
+  PersistentStorage.persistProp('checkin_streak', 0);
+}
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `private initStorage(): void {` | 定义私有初始化方法 |
+| `AppStorage.setOrCreate('currentIndex', AppStorage.get<number>('currentIndex') || 0);` | 初始化当前 Tab，下标默认是 0，即转盘页 |
+| `PersistentStorage.persistProp('wheel_history', '');` | 将抽奖历史声明为持久化属性 |
+| `PersistentStorage.persistProp('last_checkin', '');` | 将上次签到日期声明为持久化属性 |
+| `PersistentStorage.persistProp('checkin_streak', 0);` | 将连续签到天数声明为持久化属性 |
+| `}` | 结束初始化方法 |
+
+这里的作用有两个：
+
+1. 本机重启后仍可保留历史和签到。
+2. 自由流转恢复数据时，目标端有明确的全局状态容器。
+
+### 4. 源端保存迁移状态
+
+代码：
 
 ```ts
 onContinue(wantParam: Record<string, Object>): AbilityConstant.OnContinueResult {
@@ -313,23 +4562,56 @@ onContinue(wantParam: Record<string, Object>): AbilityConstant.OnContinueResult 
   wantParam['wheelHistory'] = AppStorage.get<string>('wheel_history') || '';
   wantParam['lastCheckIn'] = AppStorage.get<string>('last_checkin') || '';
   wantParam['checkInStreak'] = AppStorage.get<number>('checkin_streak') || 0;
+  hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onContinue');
   return AbilityConstant.OnContinueResult.AGREE;
 }
 ```
 
-作用：
+逐行解释：
 
-| 代码 | 含义 |
+| 代码 | 作用 |
 | --- | --- |
-| `currentIndex` | 保存当前页面 |
-| `wheelHistory` | 保存抽奖历史 |
-| `lastCheckIn` | 保存签到日期 |
-| `checkInStreak` | 保存连续签到天数 |
-| `AGREE` | 同意系统发起迁移 |
+| `onContinue(wantParam: Record<string, Object>): AbilityConstant.OnContinueResult {` | 系统发起应用接续时调用，参数用于携带迁移数据 |
+| `wantParam['currentIndex'] = AppStorage.get<number>('currentIndex') || 0;` | 保存当前 Tab 下标 |
+| `wantParam['wheelHistory'] = AppStorage.get<string>('wheel_history') || '';` | 保存抽奖历史字符串 |
+| `wantParam['lastCheckIn'] = AppStorage.get<string>('last_checkin') || '';` | 保存上次签到日期 |
+| `wantParam['checkInStreak'] = AppStorage.get<number>('checkin_streak') || 0;` | 保存连续签到天数 |
+| `hilog.info(..., 'Ability onContinue');` | 打印源端接续日志 |
+| `return AbilityConstant.OnContinueResult.AGREE;` | 返回同意迁移，系统继续发起接续 |
+| `}` | 结束 `onContinue` 方法 |
 
-### 4. 目标端恢复状态
+这一段运行在源设备上，例如手机端。
 
-在 `EntryAbility.ts` 中实现：
+### 5. 目标端已有实例时恢复数据
+
+代码：
+
+```ts
+onNewWant(want: Want) {
+  this.restoreContinueData(want);
+  hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onNewWant');
+}
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `onNewWant(want: Want) {` | 当目标设备已有应用实例时，系统可能通过新 Want 传入迁移数据 |
+| `this.restoreContinueData(want);` | 从新 Want 中恢复迁移数据 |
+| `hilog.info(..., 'Ability onNewWant');` | 打印日志，确认目标端收到接续参数 |
+| `}` | 结束 `onNewWant` 方法 |
+
+为什么需要 `onNewWant()`：
+
+- 如果目标端应用没有启动，通常走 `onCreate()`。
+- 如果目标端应用已经存在，可能走 `onNewWant()`。
+
+两个都写，接续恢复更稳。
+
+### 6. 统一恢复迁移数据
+
+代码：
 
 ```ts
 private restoreContinueData(want: Want): void {
@@ -352,66 +4634,191 @@ private restoreContinueData(want: Want): void {
 }
 ```
 
-恢复入口：
+逐行解释：
 
-| 方法 | 场景 |
+| 代码 | 作用 |
 | --- | --- |
-| `onCreate()` | 目标设备首次启动应用 |
-| `onNewWant()` | 目标设备已有应用实例 |
+| `private restoreContinueData(want: Want): void {` | 定义私有恢复方法 |
+| `if (want === undefined || want.parameters === undefined) {` | 判断是否存在迁移参数 |
+| `return;` | 如果没有参数，直接返回 |
+| `}` | 结束空参数判断 |
+| `const params = want.parameters;` | 取出迁移参数对象 |
+| `if (params['currentIndex'] !== undefined) {` | 判断是否传来了当前 Tab |
+| `AppStorage.setOrCreate('currentIndex', params['currentIndex'] as number);` | 将当前 Tab 写入全局状态 |
+| `}` | 结束当前 Tab 恢复 |
+| `if (params['wheelHistory'] !== undefined) {` | 判断是否传来了抽奖历史 |
+| `AppStorage.setOrCreate('wheel_history', params['wheelHistory'] as string);` | 将抽奖历史写入全局状态 |
+| `}` | 结束抽奖历史恢复 |
+| `if (params['lastCheckIn'] !== undefined) {` | 判断是否传来了签到日期 |
+| `AppStorage.setOrCreate('last_checkin', params['lastCheckIn'] as string);` | 将签到日期写入全局状态 |
+| `}` | 结束签到日期恢复 |
+| `if (params['checkInStreak'] !== undefined) {` | 判断是否传来了连续签到天数 |
+| `AppStorage.setOrCreate('checkin_streak', params['checkInStreak'] as number);` | 将连续签到天数写入全局状态 |
+| `}` | 结束连续签到天数恢复 |
+| `}` | 结束恢复方法 |
 
-### 5. 当前 Tab 恢复
+这一段运行在目标设备上，例如平板端。
 
-`CanvasPage.ets` 将当前 Tab 改成：
+## 六、CanvasPage 的当前 Tab 迁移
+
+文件：
+
+```txt
+CanvasComponent-master/entry/src/main/ets/pages/CanvasPage.ets
+```
+
+关键代码：
 
 ```ts
 @StorageLink('currentIndex') currentIndex: number = 0;
 ```
 
-这样用户切换 Tab 后，`currentIndex` 会自动同步到 `AppStorage`。目标设备恢复 `currentIndex` 后，页面会打开到对应 Tab。
+逐行解释：
 
-### 6. 发起方式
-
-应用内部不需要写“发起流转”按钮，流转由 HarmonyOS 系统入口触发。
-
-测试条件：
-
-| 条件 | 说明 |
+| 代码 | 作用 |
 | --- | --- |
-| 两台设备 | 例如手机和平板 |
-| 同一应用 | 两端安装相同 `bundleName` 的应用 |
-| 同一华为账号 | 系统接续依赖账号和信任关系 |
-| Wi-Fi 和蓝牙开启 | 用于发现和连接设备 |
-| 系统支持应用接续 | 设备和系统版本需要支持自由流转 |
-| `continuable: true` | 应用必须声明支持接续 |
+| `@StorageLink('currentIndex')` | 将组件状态和 `AppStorage` 中的 `currentIndex` 双向绑定 |
+| `currentIndex: number = 0;` | 当前 Tab 下标，默认 0 表示转盘页 |
+
+原来这里使用的是：
+
+```ts
+@State currentIndex: number = 0;
+```
+
+`@State` 只属于当前组件，不方便 `EntryAbility.onContinue()` 读取。
+
+改成 `@StorageLink` 后：
+
+1. 用户切换 Tab 时，`currentIndex` 自动同步到 `AppStorage`。
+2. `onContinue()` 可以从 `AppStorage` 读取当前 Tab。
+3. 目标端恢复 `currentIndex` 后，页面会自动跳到对应 Tab。
+
+Tab 切换代码：
+
+```ts
+.onChange((idx: number) => { this.currentIndex = idx; })
+```
+
+逐行解释：
+
+| 代码 | 作用 |
+| --- | --- |
+| `.onChange((idx: number) => {` | 监听 Tab 切换事件 |
+| `this.currentIndex = idx;` | 将新的 Tab 下标写入 `currentIndex` |
+| `})` | 结束 Tab 切换回调 |
+
+因为 `currentIndex` 是 `@StorageLink`，所以这里赋值后，`AppStorage` 中的 `currentIndex` 也会更新。
+
+## 七、迁移数据说明
+
+当前通过 `wantParam` 携带的数据如下：
+
+| wantParam 字段 | AppStorage 字段 | 类型 | 说明 |
+| --- | --- | --- | --- |
+| `currentIndex` | `currentIndex` | `number` | 当前 Tab |
+| `wheelHistory` | `wheel_history` | `string` | 抽奖历史 |
+| `lastCheckIn` | `last_checkin` | `string` | 上次签到日期 |
+| `checkInStreak` | `checkin_streak` | `number` | 连续签到天数 |
+
+选择这些数据的原因：
+
+1. 数据量小，适合直接放入 `wantParam`。
+2. 都是用户感知明显的状态。
+3. 目标端恢复后，页面可以立即显示正确结果。
+
+## 八、为什么不迁移 Canvas 像素
+
+转盘和刮刮乐都使用 Canvas 绘制，但自由流转不适合直接迁移 Canvas 像素。
+
+原因如下：
+
+| 原因 | 说明 |
+| --- | --- |
+| 数据量大 | Canvas 像素数据可能远大于接续参数建议大小 |
+| 设备尺寸不同 | 手机和平板 Canvas 尺寸不同，迁移像素会变形 |
+| 恢复复杂 | 刮痕、粒子、动画都属于临时视觉状态 |
+| 体验收益低 | 重新根据状态绘制更自然、更稳定 |
+
+正确做法是迁移业务状态，例如当前页面、历史记录、奖品结果，然后在目标设备上重新绘制 UI。
+
+## 九、如何发起自由流转
+
+应用内部不需要自己写“发起流转”按钮。
+
+发起流程由 HarmonyOS 系统完成：
+
+1. 两台设备安装同一个应用。
+2. 两台设备登录同一个华为账号。
+3. 两台设备打开 Wi-Fi 和蓝牙。
+4. 两台设备开启多设备协同/应用接续相关能力。
+5. 在设备 A 上打开本应用并进行操作。
+6. 在设备 B 上通过系统提供的接续入口打开本应用。
+7. 系统调用设备 A 的 `onContinue()`。
+8. 系统将 `wantParam` 传到设备 B。
+9. 设备 B 调用 `onCreate()` 或 `onNewWant()`。
+10. 应用恢复状态。
+
+常见系统入口包括：
+
+| 入口 | 说明 |
+| --- | --- |
+| Dock/任务栏接续图标 | 平板或大屏设备可能显示可接续应用入口 |
+| 最近任务 | 系统多任务界面可能出现跨设备任务 |
+| 多设备协同入口 | 系统智慧互联/超级终端相关页面 |
+
+具体入口会因系统版本和设备型号不同而不同。
+
+## 十、测试建议
+
+### 1. 当前 Tab 恢复测试
 
 测试步骤：
 
-1. 手机打开应用。
-2. 切到“刮刮乐”或“记录”页。
-3. 做几次抽奖，产生历史记录。
-4. 点击签到。
-5. 通过平板系统的应用接续入口打开该应用。
-6. 检查平板是否恢复当前 Tab、抽奖记录和签到状态。
+1. 在手机打开应用。
+2. 切换到“刮刮乐”页。
+3. 发起自由流转到平板。
+4. 查看平板是否直接打开“刮刮乐”页。
 
-## 六、运行与验证建议
-
-由于该项目是 HarmonyOS 工程，建议使用 DevEco Studio 打开内层工程：
+预期结果：
 
 ```txt
-D:\CanvasComponent-master\CanvasComponent-master
+平板端 currentIndex 恢复为 1
+页面显示刮刮乐 Tab
 ```
 
-建议验证以下场景：
+### 2. 抽奖历史恢复测试
 
-| 场景 | 验证点 |
-| --- | --- |
-| 手机竖屏 | 底部 Tab 不出屏，转盘 GO 居中 |
-| 手机横屏 | 转盘不超出屏幕，刮刮乐为横向卡片 |
-| 平板竖屏 | 左侧 Tab 正常，刮刮乐不跑出屏幕 |
-| 平板横屏 | 转盘和刮刮乐都在内容区内 |
-| 应用接续 | 当前 Tab、历史记录、签到状态恢复 |
+测试步骤：
 
-DevEco 日志中可关注：
+1. 在手机转盘抽奖几次。
+2. 切换到“记录”页，确认有历史记录。
+3. 发起自由流转到平板。
+4. 查看平板“记录”页。
+
+预期结果：
+
+```txt
+平板端可以看到手机端产生的抽奖记录
+```
+
+### 3. 签到状态恢复测试
+
+测试步骤：
+
+1. 在手机点击签到。
+2. 发起自由流转到平板。
+3. 查看平板转盘页右上角签到状态。
+
+预期结果：
+
+```txt
+平板端显示已签到和连续签到天数
+```
+
+### 4. 日志测试
+
+在 DevEco Studio 日志中查看：
 
 ```txt
 Ability onContinue
@@ -419,36 +4826,39 @@ Ability onCreate
 Ability onNewWant
 ```
 
-如果能看到 `Ability onContinue`，说明源端已被系统发起接续。
+如果源端出现 `Ability onContinue`，说明系统已经发起接续。
 
-如果目标端能看到 `onCreate` 或 `onNewWant`，说明目标设备收到接续启动。
+如果目标端出现 `Ability onCreate` 或 `Ability onNewWant`，说明目标端已经收到接续启动。
 
-## 七、文档对应关系
+## 十一、当前版本限制
 
-原四份 README 的内容已经汇总进本文档：
+当前版本是轻量接续方案，有以下限制：
 
-| 原文档 | 内容 | 在本文中的位置 |
-| --- | --- | --- |
-| `README1.md` | 初始 Canvas 转盘项目、架构、核心代码说明 | 项目概述、项目结构、转盘抽奖 |
-| `README2.md` | 新增刮刮乐、历史记录、彩纸动画、签到等功能 | 核心功能、视觉增强、签到系统 |
-| `README3.md` | 多端适配实现和逐行解释 | 多端适配实现 |
-| `README4.md` | 自由流转实现和逐行解释 | 自由流转实现 |
+| 限制 | 说明 |
+| --- | --- |
+| 不恢复转盘旋转中状态 | 迁移后转盘会以静态页面显示 |
+| 不恢复刮刮乐具体刮痕 | 迁移 Canvas 像素不稳定 |
+| 不迁移大文件 | 当前只使用 `wantParam`，适合小数据 |
+| 不做实时多端协同 | 当前是跨端迁移，不是两个设备同时操作 |
 
-如果需要看每一段代码的逐行解释，可以继续查看 `README3.md` 和 `README4.md`；如果只需要项目总览和答辩说明，阅读本文档即可。
+如果后续要迁移更复杂数据，可以继续接入：
 
-## 八、总结
+1. 分布式数据对象：用于较复杂的临时业务数据。
+2. 分布式文件：用于图片、文档、附件等文件资产。
+3. 多端协同：用于两个设备同时交互的场景。
 
-本项目最终形成了一个支持多端体验的 HarmonyOS Canvas 抽奖应用：
+## 十二、总结
+
+本项目的自由流转实现可以概括为：
 
 ```txt
-Canvas 转盘抽奖
-+ 刮刮乐玩法
-+ 抽奖历史
-+ 签到系统
-+ 动态视觉效果
-+ 手机/平板横竖屏适配
-+ 自由流转应用接续
+module.json5 开启 continuable
+EntryAbility.onContinue 保存状态
+EntryAbility.onCreate/onNewWant 恢复状态
+CanvasPage 使用 @StorageLink 同步当前 Tab
+页面根据 AppStorage 自动刷新
 ```
 
-整体实现思路是：业务状态放入 `AppStorage` / `PersistentStorage`，界面根据真实内容区域自适应绘制，跨端迁移时只迁移轻量业务状态，在目标设备上重新绘制 UI。
+这套方案适合当前抽奖应用，因为它迁移的是核心业务状态，而不是临时视觉效果。
 
+---
